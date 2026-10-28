@@ -102,8 +102,31 @@ const sampleTeams=[demoTeam,{id:"team-west",name:"Группа «БАСТИОН�
 {id:"e4",name:"Ash_01",rank:"Ефрейтор",role:"Боец",branch:"soldier",parent:"e3"},
 {id:"e5",name:"Lynx_52",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"e3"},
 {id:"e6",name:"PilotBear",rank:"Прапорщик",role:"Экипаж техники",branch:"soldier",parent:"e2"}]}];
-const exampleCandidates=[["VegaActual","Капитан","Командирское"],["Vityaz_42","Старшина","Солдатское"]];
-const exampleReviews=[{name:"FalconActual",team:"Операция «СЕВЕР»",values:[5,5,4,4,5],text:"Чётко распределяет задачи и поддерживает связь с отрядом."},{name:"Sova_31",team:"Группа «БАСТИОН»",values:[5,4,4,5,5],text:"Помогает новичкам и вовремя передаёт информацию."},{name:"Nord_93",team:"Отряд «РУБЕЖ»",values:[4,4,5,4,4],text:"Хорошо ориентируется на карте; иногда стоит подробнее объяснять план."}];
+/* Составы и специальности для демонстрации структуры. */
+sampleTeams[1].members.unshift({id:"w0",name:"BastionActual",rank:"Генерал",role:"Командующий",branch:"officer",parent:""});
+sampleTeams[1].members.find(m=>m.id==="w1").parent="w0";
+sampleTeams[2].members.unshift({id:"e0",name:"RubezhActual",rank:"Генерал",role:"Командующий",branch:"officer",parent:""});
+sampleTeams[2].members.find(m=>m.id==="e1").parent="e0";
+sampleTeams[0].members.find(m=>m.id==="s6").role="Боец";
+sampleTeams[1].members.push(
+{id:"w7",name:"Volna_61",rank:"Прапорщик",role:"Экипаж техники",branch:"soldier",parent:"w6",specialties:["Бронетехника"]},
+{id:"w8",name:"Kobalt_34",rank:"Ефрейтор",role:"Боец",branch:"soldier",parent:"w4",specialties:["Стрелок"]},
+{id:"w9",name:"Reef_47",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"w4",specialties:["Сапёр"]},
+{id:"w10",name:"Marsh_01",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"w3",specialties:["Медик"]},
+{id:"w11",name:"Delta_36",rank:"Младший лейтенант",role:"Сквадлидер",branch:"officer",parent:"w2"}
+);
+sampleTeams[2].members.push(
+{id:"e7",name:"Radar_79",rank:"Старший прапорщик",role:"Специалист по технике",branch:"soldier",parent:"e2",specialties:["Вертолёты","Транспорт и снабжение"]},
+{id:"e8",name:"Kite_21",rank:"Сержант",role:"Боец",branch:"soldier",parent:"e3",specialties:["Автоматчик"]},
+{id:"e9",name:"Raven_46",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"e8",specialties:["Стрелок"]},
+{id:"e10",name:"FoxMedic",rank:"Ефрейтор",role:"Боец",branch:"soldier",parent:"e8",specialties:["Медик"]},
+{id:"e11",name:"Omsk_70",rank:"Младший лейтенант",role:"Сквадлидер",branch:"officer",parent:"e1"}
+);
+const sampleSpecialties={s1:["Бронетехника"],s2:["Бронетехника"],s3:["Стрелок"],s4:["Автоматчик"],s5:["Медик"],s6:["Стрелок"],s7:["Разведчик"],s8:["Стрелок"],s9:["Гранатомётчик"],s10:["Медик"],s11:["Пулемётчик"],s12:["Сапёр"],s13:["Стрелок"],s14:["Противотанковый стрелок"],s15:["Разведчик"],s16:["Автоматчик"],w3:["Стрелок"],w4:["Медик"],w5:["Стрелок"],w6:["Бронетехника","Транспорт и снабжение"],e3:["Автоматчик"],e4:["Сапёр"],e5:["Стрелок"],e6:["Вертолёты"]};
+for(const t of sampleTeams)for(const m of t.members)if(sampleSpecialties[m.id])m.specialties=sampleSpecialties[m.id];
+const exampleCandidates=[["VegaActual","Майор","Командирское"],["Vityaz_42","Старшина","Солдатское"]];
+const exampleReviews=[{name:"FalconActual",team:"Операция «СЕВЕР»",values:[5,5,4,4,5],text:"Чётко распределяет задачи и поддерживает связь с отрядом."},{name:"Sova_31",team:"Группа «БАСТИОН»",kind:"soldier",values:[5,4,4,5,5],text:"Помогает новичкам и вовремя передаёт информацию."},{name:"Nord_93",team:"Отряд «РУБЕЖ»",values:[4,4,5,4,4],text:"Хорошо ориентируется на карте; иногда стоит подробнее объяснять план."}];
+exampleReviews.push({name:"Kremen47",team:"Операция «СЕВЕР»",kind:"technical",values:[5,4,4,5,5],text:"Согласует действия экипажа и осторожно выбирает маршрут."},{name:"PilotBear",team:"Отряд «РУБЕЖ»",kind:"technical",values:[4,4,4,5,4],text:"Поддерживает связь и сообщает о подходе к точке высадки."});
 const exampleReports=[["IronWolf_77","Разногласие по распределению транспорта перед началом раунда."],["PilotBear","Просьба уточнить правила использования вертолёта отрядом."]];
 const key="squad-command-local-v1";let state={teams:[],reviews:{},candidate:null,reports:[]},branch="officer",rankBranch="officer",teamId="demo-team";const collapsed=new Set();let fitTree=false,treeZoom=1;
 const $=id=>document.getElementById(id), uid=()=>globalThis.crypto&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2);
@@ -163,7 +186,7 @@ function renderAppointment(){const box=$("appointment-demo");if(!box)return;cons
 const originalRenderCandidate=renderCandidate;renderCandidate=function(){originalRenderCandidate();renderAppointment();renderCertificates();$("decision-history").innerHTML=(state.history||[]).length?(state.history||[]).map(h=>'<div class="rank-row"><div><strong>'+esc(h.name)+' · '+esc(h.rank)+'</strong><small>'+esc(h.action)+' · '+esc(h.team)+' · '+esc(h.date)+'</small></div></div>').join(""):'<p class="hint">Решений пока нет.</p>'};
 function renderCertificates(){const box=$("appointment-demo");if(!box)return;const certs=state.certificates||[];if(!certs.length)return;const list=document.createElement("div");list.className="details";list.innerHTML='<strong>Локальные демонстрационные сертификаты</strong><p class="hint">Без подписи руководителя и без проверки подлинности.</p>'+certs.map((c,i)=>'<p>'+esc(c.name)+' · '+esc(c.role)+' <button type="button" class="small" data-cert="'+i+'">Печать / PDF</button></p>').join("");box.appendChild(list);list.querySelectorAll("[data-cert]").forEach(b=>b.onclick=()=>{const c=certs[Number(b.dataset.cert)],w=window.open("","_blank");if(!w){alert("Разрешите всплывающие окна для печати.");return}w.document.write('<!doctype html><html lang="ru"><meta charset="utf-8"><title>Демонстрационный сертификат</title><body style="font-family:Arial;text-align:center;padding:60px"><h1>ДЕМОНСТРАЦИОННЫЙ СЕРТИФИКАТ</h1><p>Локальная запись, не подтверждающая результат выборов</p><h2>'+esc(c.name)+'</h2><p>Должность: '+esc(c.role)+'</p><p>Звание: '+esc(c.rank)+' · Команда: '+esc(c.team)+'</p><p>Дата: '+esc(c.date)+'</p><p>Подпись руководителя: ____________________</p></body></html>');w.document.close();w.print()})}
 $("sample-candidates").innerHTML=exampleCandidates.map(([name,rank,branch])=>'<div class="rank-row"><div><strong>'+esc(name)+'</strong><small>'+esc(branch)+' направление · '+esc(rank)+'</small></div></div>').join("");
-$("sample-reviews").innerHTML=exampleReviews.map(r=>{const score=r.values.reduce((sum,v,i)=>sum+v*criteria[i][1],0);return '<div class="rank-row"><div><strong>'+esc(r.name)+' · '+score.toLocaleString("ru-RU")+' / 25</strong><small>'+esc(r.team)+' · '+esc(r.text)+'</small><small>'+criteria.map(([name],i)=>esc(name)+': '+r.values[i]+'/5').join(' · ')+'</small></div></div>'}).join("");
+$("sample-reviews").innerHTML=exampleReviews.map(r=>{const reviewCriteria=r.kind==="technical"?technicalCriteria:r.kind==="soldier"?soldierCriteria:criteria,score=r.values.reduce((sum,v,i)=>sum+v*reviewCriteria[i][1],0);return '<div class="rank-row"><div><strong>'+esc(r.name)+' · '+score.toLocaleString("ru-RU")+' / 25</strong><small>'+esc(r.team)+' · '+esc(r.text)+'</small><small>'+reviewCriteria.map(([name],i)=>esc(name)+': '+r.values[i]+'/5').join(' · ')+'</small></div></div>'}).join("");
 $("sample-reports").innerHTML=exampleReports.map(([subject,description])=>'<div class="rank-row"><div><strong>'+esc(subject)+'</strong><small>'+esc(description)+'</small></div></div>').join("");
 renderTree();renderRanks();renderCandidate();renderReports();renderRating();
 if("serviceWorker" in navigator && (location.protocol==="https:"||location.hostname==="localhost")){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(err=>console.warn("Service worker:",err)))}
