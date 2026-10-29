@@ -1,7 +1,7 @@
 {
   "name": "SQUAD COMMAND",
   "short_name": "SQUAD",
-  "description": "Структура команд и звания",
+  "description": "Структура команд, звания и роли игроков SQUAD",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -26,5 +26,7 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
-  ]
+  ],
+  "id": "./",
+  "lang": "ru"
 }
