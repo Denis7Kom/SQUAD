@@ -1,4 +1,4 @@
-const CACHE="squad-shell-v73";
+const CACHE="squad-shell-v74";
 const SHELL=["./","./index.html","./favicon.svg","./icon-192.png","./icon-512.png","./manifest.webmanifest"];
 const shellUrls=new Set(SHELL.map(path=>new URL(path,self.registration.scope).href));
 self.addEventListener("install",event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
