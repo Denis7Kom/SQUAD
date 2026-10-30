@@ -222,7 +222,7 @@ const technicalCriteria=[["Взаимодействие с экипажем",1.5
 const soldierSpecialties=["Стрелок","Медик","Сапёр","Мобильный снайпер","Тяжёлый снайпер","Автоматчик","Лёгкий пулемётчик","Тяжёлый пулемётчик","Гренадер","Лёгкая труба","Противотанковый тандем","Разведчик"],technicalSpecialties=["Танк","БМП","БТР","Транспорт и снабжение","Вертолёт","Пулемётчик вертолёта"];
 function availableTechnicalSpecialties(rank){return technicalSpecialties.filter(x=>x==="Вертолёт"?rank==="Старший прапорщик":x==="Пулемётчик вертолёта"?rank==="Прапорщик":true)}
 function techGroup(specialty){return specialty==="Пулемётчик вертолёта"?"Вертолёт":specialty}
-function technicalDisplay(specialty){return ({"Танк":"Экипаж танка","БМП":"Экипаж БМП","БТР":"Экипаж БТР","Транспорт и снабжение":"Транспорт / снабжение","Вертолёт":"Пилот вертолёта","Пулемётчик вертолёта":"Пулемётчик вертолёта"})[specialty]||specialty}
+function technicalDisplay(specialty){return ({"Танк":"Экипаж танка","БМП":"Экипаж БМП","БТР":"Экипаж БТР","Транспорт и снабжение":"Транспорт и снабжение","Вертолёт":"Пилот вертолёта","Пулемётчик вертолёта":"Пулемётчик вертолёта"})[specialty]||specialty}
 function validTechnicalSpecialties(rank,list){return Array.isArray(list)&&list.length<=1&&list.every(x=>availableTechnicalSpecialties(rank).includes(x))}
 const soldierAdmission={"Рядовой":{score:null,reviews:0},"Ефрейтор":{score:8,reviews:1},"Младший сержант":{score:11,reviews:2},"Сержант":{score:14,reviews:3},"Старший сержант":{score:17,reviews:4},"Старшина":{score:19,reviews:5}};
 const soldierCriteria=[["Взаимодействие",1.5],["Коммуникация",1],["Тактика",1],["Надёжность",1],["Отношение к игрокам",0.5]];
