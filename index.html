@@ -134,6 +134,26 @@ body.map-is-expanded{overflow:hidden}body.map-is-expanded #view-structure{animat
 .org-card.org-crew::before{background:linear-gradient(90deg,#e2ba7d,#b58a59,transparent)}
 /* The card border conveys its category without a separate stripe. */
 .org-card::before{display:none}
+
+/* Refined hierarchy cards: consistent alignment and restrained category colours. */
+.org-card,.org-card.has-service-term{
+  align-items:center; gap:12px; padding:15px 13px;
+  border-radius:9px; border-color:#648069;
+  background:linear-gradient(145deg,#2a3a2c,#1c2920);
+  box-shadow:0 8px 20px #0006,inset 0 1px #ffffff0d;
+}
+.org-card .rank-icon{align-self:center;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.org-info{min-width:0}
+.org-info strong{font-size:14px;line-height:1.25;letter-spacing:.01em}
+.org-info small{margin-top:5px;line-height:1.35}
+.org-info .role,.org-info .reputation,.org-info .review-count{line-height:1.4}
+.org-card.org-command{background:linear-gradient(145deg,#4a4028,#292c20);border-color:#cbb574;box-shadow:0 8px 22px #0007,inset 0 1px #ffffff12}
+.org-card.org-advisor,.org-card.org-technical{background:linear-gradient(145deg,#2d4651,#1d3037);border-color:#81aab7}
+.org-card.org-leader{background:linear-gradient(145deg,#344833,#213125);border-color:#86a780}
+.org-card.org-crew{background:linear-gradient(145deg,#46392d,#29271f);border-color:#bb986d}
+.org-card.org-vacant{background:#1d3035;border:1px dashed #87adb7;opacity:.88}
+.org-card:hover{border-color:#e4cd8d;box-shadow:0 10px 24px #0009,inset 0 1px #ffffff14}
+.org-card::before{display:none}
 </style></head><body><div class="shell">
 <aside><div><div class="brand">SQUAD <b>/</b> COMMAND</div><div class="subbrand">COMMUNITY OPERATIONS</div></div><div><div class="sidebar-caption">Навигация</div><nav class="nav" aria-label="Основная навигация"><button data-view="structure" class="active">◈ &nbsp; Структура команд</button><button data-view="ranks">▣ &nbsp; Звания и правила</button><button data-view="rating">◉ &nbsp; Оценка игрока</button><button data-view="candidacy">⚑ &nbsp; Кандидатура</button><button data-view="reports">◇ &nbsp; Жалобы</button><div class="nav-divider" role="separator" aria-label="Справочная информация"><span aria-hidden="true">Справка</span></div><button data-view="guide">📖 &nbsp; Правила применения</button><button data-view="about">◉ &nbsp; О проекте</button></nav></div><div class="aside-bottom">Локальный прототип<br>Данные в этом браузере</div></aside>
 <div class="workspace"><header class="topbar"><strong id="top-title">Структура команд</strong><label for="site-language" style="display:flex;align-items:center;gap:8px;margin-left:auto;font-size:12px">Язык / Language <select id="site-language" aria-label="Language / Язык"><option value="ru">Русский</option><option value="en">English</option></select></label><button type="button" id="pwa-install" class="small pwa-install">Установить</button><span class="status">Локальный режим</span></header><main>
