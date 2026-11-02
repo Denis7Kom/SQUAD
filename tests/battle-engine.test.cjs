@@ -12,7 +12,7 @@ const E = vm.runInNewContext(html.slice(start, end) + "\nBattleEngine;");
 function team(id, size) { return { id, name: id, members: Array.from({ length: size }, (_, i) => ({ id: id + i, name: "Player " + i, rank: "Лейтенант", role: "Сквадлидер" })) }; }
 function verify(m) {
   for (const t of m.teams) {
-    assert.equal(t.tickets, E.START_TICKETS - t.deaths - t.bleed, "ticket ledger");
+    assert.equal(t.tickets, E.START_TICKETS - t.deaths - t.bleed - (t.vehicleLoss || 0), "ticket ledger");
     assert.ok(t.tickets >= 0 && t.tickets <= E.START_TICKETS);
     for (const g of t.groups) {
       assert.ok(g.ready >= 0 && g.ready <= g.total);
@@ -56,4 +56,14 @@ for (const t of led.teams) {
   const assigned = t.groups.flatMap(g=>g.memberIndices);
   assert.equal(new Set(assigned).size,t.roster.length,"one membership per player");
   for (const g of t.groups) assert.equal(E.isCommander(t.roster[g.commanderIndex]),true,"squad commander");
+}
+
+for (const enemyKind of ["БМП","БТР"]) {
+ const crewTeam=(id,kind)=>({id,name:id,members:[{id:id+"c",name:"Officer",rank:"Лейтенант"},{id:id+"v",name:"Crew",rank:"Старший прапорщик",role:"Экипаж техники",specialties:[kind]}]});
+ const match=E.create([crewTeam("a","Танк"),crewTeam("b",enemyKind)]);
+ match.teams.forEach((t,i)=>{t.vehicles[0].x=45+i*10;t.vehicles[0].y=50;t.vehicles[0].parked=true;});
+ for(let i=0;i<8;i++){E.step(match);verify(match);}
+ assert.equal(match.teams[0].vehicles[0].destroyed,false);
+ assert.equal(match.teams[1].vehicles[0].destroyed,true);
+ assert.equal(match.teams[1].vehicleLoss,10,"asset loss charged once");
 }
