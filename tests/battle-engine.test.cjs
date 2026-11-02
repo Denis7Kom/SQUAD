@@ -9,7 +9,7 @@ const start = html.indexOf("const BattleEngine=(()=>{");
 const end = html.indexOf('const warKey=', start);
 assert.ok(start >= 0 && end > start, "engine boundaries");
 const E = vm.runInNewContext(html.slice(start, end) + "\nBattleEngine;");
-function team(id, size) { return { id, name: id, members: Array.from({ length: size }, (_, i) => ({ id: id + i, name: "Player " + i })) }; }
+function team(id, size) { return { id, name: id, members: Array.from({ length: size }, (_, i) => ({ id: id + i, name: "Player " + i, rank: "Лейтенант", role: "Сквадлидер" })) }; }
 function verify(m) {
   for (const t of m.teams) {
     assert.equal(t.tickets, E.START_TICKETS - t.deaths - t.bleed, "ticket ledger");
@@ -47,3 +47,13 @@ assert.equal(order.teams[0].groups[0].target, 2);
 assert.equal(E.order(order, 0, 0, 4, "flank"), false);
 assert.equal(E.order(order, 0, 0, 1, "unknown"), false);
 console.log("PASS: " + checked + " matches; ledger, troop conservation, replay, boundaries, orders, syntax.");
+
+assert.equal(E.isCommander({rank:"Генерал",role:"Советник"}), false, "advisor excluded");
+assert.equal(E.isCommander({rank:"Старший прапорщик",role:"Экипаж техники"}), false, "technical rank alone is not a commander");
+assert.throws(() => E.create([{id:"a",name:"A",members:[{id:"1",rank:"Генерал",role:"Советник"}]},{id:"b",name:"B",members:team("b",1).members}]), e=>e.code==="MISSING_COMMANDERS");
+const led = E.create([team("blue",49),team("red",42)]);
+for (const t of led.teams) {
+  const assigned = t.groups.flatMap(g=>g.memberIndices);
+  assert.equal(new Set(assigned).size,t.roster.length,"one membership per player");
+  for (const g of t.groups) assert.equal(E.isCommander(t.roster[g.commanderIndex]),true,"squad commander");
+}
