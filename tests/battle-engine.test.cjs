@@ -67,3 +67,24 @@ for (const enemyKind of ["БМП","БТР"]) {
  assert.equal(match.teams[1].vehicles[0].destroyed,true);
  assert.equal(match.teams[1].vehicleLoss,10,"asset loss charged once");
 }
+
+function armoredTeam(id, crewSize=2) {
+ const members=Array.from({length:3},(_,i)=>({id:id+"o"+i,name:"Officer "+i,rank:"Лейтенант",role:"Сквадлидер"}));
+ for(const [i,kind] of ["Танк","БМП","БТР"].entries())for(let j=0;j<crewSize;j++)members.push({id:id+"v"+i+j,name:"Crew "+i+j,rank:j===0?"Старший прапорщик":"Рядовой",role:"Экипаж техники",specialties:[kind],parent:j===0?null:id+"v"+i+"0"});
+ return {id,name:id,members};
+}
+const separate=E.create([armoredTeam("a"),armoredTeam("b")],{balanced:false});
+for(const t of separate.teams){
+ assert.deepEqual(Array.from(t.groups,g=>g.kind),["tank","ifv","apc"]);
+ assert.equal(t.vehicles.length,3);
+ for(const g of t.groups){assert.equal(g.total,3);assert.equal(E.isCommander(t.roster[g.commanderIndex]),true);}
+ const assigned=t.groups.flatMap(g=>g.memberIndices);assert.equal(new Set(assigned).size,t.roster.length);
+ for(const v of t.vehicles){assert.equal(v.crew.length,2);assert.equal(t.groups[v.group].kind,v.kind);}
+}
+assert.equal(E.armorIssues(separate).length,0);
+const legacy=JSON.parse(JSON.stringify(separate));legacy.teams[0].groups[0].kind="technical";
+assert.equal(E.armorIssues(legacy).length,1,"legacy mixed armor squad rejected");
+assert.throws(()=>E.create([armoredTeam("a",3),armoredTeam("b",3)],{balanced:false}),e=>e.code==="CREW_CAPACITY");
+const shortage=armoredTeam("a");shortage.members=shortage.members.filter(p=>p.id!=="ao2");
+assert.throws(()=>E.create([shortage,armoredTeam("b")],{balanced:false}),e=>e.code==="MISSING_COMMANDERS");
+console.log("PASS: separate tank/IFV/APC squads; 3-person capacity; distinct crews; mandatory officers; legacy validation.");
