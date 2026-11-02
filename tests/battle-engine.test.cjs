@@ -12,8 +12,8 @@ const E = vm.runInNewContext(html.slice(start, end) + "\nBattleEngine;");
 function team(id, size) { return { id, name: id, members: Array.from({ length: size }, (_, i) => ({ id: id + i, name: "Player " + i })) }; }
 function verify(m) {
   for (const t of m.teams) {
-    assert.equal(t.tickets, 300 - t.deaths - t.bleed, "ticket ledger");
-    assert.ok(t.tickets >= 0 && t.tickets <= 300);
+    assert.equal(t.tickets, E.START_TICKETS - t.deaths - t.bleed, "ticket ledger");
+    assert.ok(t.tickets >= 0 && t.tickets <= E.START_TICKETS);
     for (const g of t.groups) {
       assert.ok(g.ready >= 0 && g.ready <= g.total);
       assert.equal(g.ready + g.queue.reduce((n, q) => n + q.count, 0), g.total, "troop conservation");
@@ -22,7 +22,7 @@ function verify(m) {
   assert.equal(m.teams[0].kills, m.teams[1].deaths);
   assert.equal(m.teams[1].kills, m.teams[0].deaths);
 }
-function finish(m) { while (m.status !== "finished") { E.step(m); verify(m); } assert.ok(m.turn <= 30); return m; }
+function finish(m) { while (m.status !== "finished") { E.step(m); verify(m); } assert.ok(m.turn <= E.LIMIT); return m; }
 const teams = [team("blue", 49), team("red", 42)];
 let checked = 0;
 for (const ai of [false, true]) for (let i = 0; i < 400; i++) {
