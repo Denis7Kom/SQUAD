@@ -1607,7 +1607,7 @@ const BattleEngine=(()=>{
   roster.forEach((p,index)=>{
    if(isCommander(p)||!["technical","helicopter"].includes(category(p))||p.rank==="tech-coordinator")return;
    let root=p,seen=new Set([p.id]);
-   while(root.parent){const parent=roster.find(x=>x.id===root.parent);if(!parent||isCommander(parent)||category(parent)!==category(p)||seen.has(parent.id))break;seen.add(parent.id);root=parent}
+   while(root.parent){if(root.rank==="Старший прапорщик")break;const parent=roster.find(x=>x.id===root.parent);if(!parent||isCommander(parent)||category(parent)!==category(p)||seen.has(parent.id))break;seen.add(parent.id);root=parent}
    if(root.rank!=="Старший прапорщик")return;
    if(!found.has(root.id)){const text=[...root.specialties,root.role].join(" ").toLowerCase(),kind=category(root)==="helicopter"?"helicopter":/бмп|ifv/.test(text)?"ifv":/бтр|apc/.test(text)?"apc":root.specialties.some(x=>x==="Танк")?"tank":/транспорт|снабжен|logistic/.test(text)?"logistics":"support",group=groups.find(g=>g.memberIndices.includes(index));
     found.set(root.id,{id:side+"-v-"+found.size,side,kind,group:group.index,crew:[],x:group.x,y:group.y,target:group.target,parked:false,passenger:null,hp:100,destroyed:false,capacity:{tank:0,ifv:8,apc:8,helicopter:8,logistics:12,support:0}[kind]})}
