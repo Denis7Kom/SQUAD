@@ -99,19 +99,6 @@ const teamWithSupply=(id)=>({id,name:id,members:[
  {id:id+'eng',name:'Engineer',rank:'Рядовой',role:'Боец',specialties:['Сапёр','Лёгкая труба']},
  {id:id+'log',name:'Logistics',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Транспорт и снабжение']}
 ]});
-const supplies=E.create([teamWithSupply('blue'),teamWithSupply('red')],{balanced:false,ai:false});
-const T=supplies.teams[0],inf=T.groups.find(g=>g.kind==='infantry'),truck=T.vehicles.find(v=>v.kind==='logistics');
-inf.x=20;inf.y=65;truck.x=20;truck.y=65;
-assert.equal(E.buildHab(supplies,0,inf.index),'');
-assert.equal(T.habs[0].ammo,0,'new HAB starts empty');
-assert.equal(E.supply(supplies,0,truck.id,'load'),'base');
-assert.equal(E.supply(supplies,0,truck.id,'deliver'),'');
-assert.equal(T.habs[0].ammo,120);assert.equal(truck.cargo,0);
-inf.ammo=3;inf.order='defend';inf.target=0;supplies.points[0].x=inf.x;supplies.points[0].y=inf.y;
-E.step(supplies);assert.ok(inf.ammo>3);assert.ok(T.habs[0].ammo<120,'resupply consumes HAB stock');
-truck.hp=40;truck.x=T.base.x;truck.y=T.base.y;truck.parked=true;assert.equal(E.repair(supplies,0,truck.id),'');assert.equal(truck.hp,40);assert.equal(E.repair(supplies,0,truck.id),'invalid');E.step(supplies);E.step(supplies);assert.equal(truck.hp,40);E.step(supplies);assert.equal(truck.hp,70);
-truck.x=80;truck.y=80;assert.equal(E.repair(supplies,0,truck.id),'engineer');
-truck.x=T.base.x;truck.y=T.base.y;assert.equal(E.supply(supplies,0,truck.id,'load'),'');assert.equal(truck.cargo,120);
 const fog=E.create([team('b',1),team('r',1)],{balanced:false,ai:false});
 const g0=fog.teams[0].groups[0],g1=fog.teams[1].groups[0];
 g0.x=10;g0.y=80;g1.x=80;g1.y=80;assert.equal(E.visible(fog,0,g1),false);
@@ -127,15 +114,11 @@ E.step(respawn);assert.equal(vehicle.destroyed,true);E.step(respawn);assert.equa
 const orders=E.create([team('x',10),team('y',10)],{balanced:false,ai:false});
 for(const type of ['advance','attack','defend','flank','recon','retreat','escort'])assert.equal(E.order(orders,0,0,1,type),true,type);
 assert.equal(E.order(orders,0,0,1,'fly'),false);
-console.log('PASS: HAB creation and supply, engineer repair, fog, terrain, contested capture, vehicle respawn, orders.');
-const cpu=E.create([teamWithSupply('p'),teamWithSupply('cpu')],{balanced:false,ai:true});
-for(let i=0;i<14;i++)E.step(cpu);
-assert.ok(cpu.teams[1].habs.length>0,'CPU infantry built a HAB');
-assert.ok((cpu.teams[1].supplied||0)>0,'CPU carried ammunition to its HAB');
+console.log('PASS: fog, terrain, contested capture, vehicle respawn and orders.');
 const route=E.create([armoredTeam('p',1),armoredTeam('q',1)],{balanced:false,ai:false});
 const rv=route.teams[0].vehicles[0],rg=route.teams[0].groups[rv.group];
 rv.x=55;rv.y=50;assert.equal(E.order(route,0,rg.index,0,'retreat'),true);E.step(route);assert.ok(rv.x<55,'armored retreat returns toward own main base');
-console.log('PASS: CPU supply uses logistics and armored retreat follows orders.');
+console.log('PASS: armored retreat follows orders.');
 const reputationTeam=(id,officer,soldier)=>({id,name:id,members:[{id:id+'a',rank:'Лейтенант',reputation:officer},{id:id+'b',rank:'Рядовой',role:'Боец',reputation:soldier}]});
 const rating=E.create([reputationTeam('r1',0,25),reputationTeam('r2',25,0)],{balanced:false,ai:false});
 assert.equal(rating.teams[0].groups[0].skill,0);
@@ -151,19 +134,14 @@ for(const kind of ['БМП','БТР','Вертолёт']){
  const m=E.create([carryTeam('victim',kind),{id:'att',name:'att',members:[{id:'attc',rank:'Лейтенант'},{id:'attv',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Танк']}]}],{balanced:false,ai:false});
  const t=m.teams[0],v=t.vehicles.find(v=>v.kind===(kind==='БМП'?'ifv':kind==='БТР'?'apc':'helicopter')),g=t.groups.find(g=>g.kind==='infantry'),att=m.teams[1].vehicles[0];
  v.x=30;v.y=75;v.parked=true;v.hp=1;g.x=30;g.y=75;att.x=54;att.y=75;att.parked=true;m.teams[1].groups[att.group].x=54;m.teams[1].groups[att.group].y=75;
- assert.equal(E.transport(m,0,g.index,v.id,'board'),'');const crewCount=v.crew.length,passengerCount=g.ready;E.step(m);assert.equal(v.destroyed,true,kind+' destroyed');assert.equal(g.ready,0,kind+' passenger squad lost');assert.equal(t.groups[v.group].ready,0,kind+' crew lost');assert.equal(t.deaths,crewCount+passengerCount);verify(m);
+ assert.equal(E.transport(m,0,g.index,v.id,'board'),'');const crewCount=v.crew.length,passengerCount=g.ready;E.step(m);assert.equal(v.destroyed,true,kind+' destroyed');assert.equal(v.respawnAt,m.turn+20,'vehicle returns after 20 turns');assert.equal(g.ready,0,kind+' passenger squad lost');assert.equal(t.groups[v.group].ready,0,kind+' crew lost');assert.equal(t.deaths,crewCount+passengerCount);verify(m);
 }
-// Enemy HAB removal respects proximity and removes the supply source.
-const habMatch=E.create([team('blue',1),team('red',1)],{balanced:false,ai:false});
-const blue=habMatch.teams[0].groups[0],red=habMatch.teams[1].groups[0];blue.x=20;blue.y=20;red.x=80;red.y=80;assert.equal(E.buildHab(habMatch,0,blue.index),'');const h=habMatch.teams[0].habs[0];assert.equal(E.destroyHab(habMatch,1,red.index,h.id),'invalid');red.x=h.x+5;red.y=h.y;assert.equal(E.destroyHab(habMatch,1,red.index,h.id),'');assert.equal(habMatch.teams[0].habs.length,0);
-// A repair interrupts if its source leaves before the third turn.
-const repairMatch=E.create([teamWithSupply('x'),teamWithSupply('y')],{balanced:false,ai:false});const rt=repairMatch.teams[0],rv2=rt.vehicles[0];rv2.hp=40;rv2.x=rt.base.x;rv2.y=rt.base.y;rv2.parked=true;assert.equal(E.repair(repairMatch,0,rv2.id),'');rv2.x=60;rv2.y=90;E.step(repairMatch);assert.equal(rv2.repair,null);assert.equal(rv2.hp,40);
-console.log('PASS: actual roster balancing, complete crew/passenger loss, HAB destruction and interruptible repair.');
+console.log('PASS: actual roster balancing and complete crew/passenger loss.');
 const special=E.create([teamWithSupply('special'),{id:'armor',name:'armor',members:[{id:'armorC',rank:'Лейтенант'},{id:'armorV',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Танк']}]}],{balanced:false,ai:false});
 const st=special.teams[0],sg=st.groups.find(g=>g.kind==='infantry'),sv=st.vehicles[0],lostIndex=st.roster.findIndex(p=>p.name==='Engineer');
 sg.activeIndices=sg.activeIndices.filter(k=>k!==lostIndex);sg.ready=sg.activeIndices.length;sg.queue.push({at:100,count:1,members:[lostIndex]});sg.x=45;sg.y=75;sg.target=1;sv.x=45;sv.y=75;sv.parked=true;sv.hp=40;
 const target=special.teams[1].vehicles[0];target.x=55;target.y=75;target.parked=true;special.teams[1].groups[target.group].x=55;special.teams[1].groups[target.group].y=75;
-assert.equal(E.repair(special,0,sv.id),'engineer','inactive engineer cannot repair');E.step(special);assert.equal(sg.atShots||0,0,'inactive anti-tank specialist cannot fire');
+E.step(special);assert.equal(sg.atShots||0,0,'inactive anti-tank specialist cannot fire');
 for(const t of special.teams)for(const g of t.groups){assert.equal(g.ready,g.activeIndices.length);assert.equal(new Set([...g.activeIndices,...g.queue.flatMap(q=>q.members)]).size,g.total)}
 console.log('PASS: inactive specialists cannot provide repair or anti-tank fire.');
 // Casualty counts can exceed the remaining tickets while the ledger stays bounded.
@@ -217,3 +195,25 @@ function opposingTankHull(leader) {
 }
 assert.ok(opposingTankHull(25)<opposingTankHull(0), 'commander reputation changes the damage actually dealt');
 console.log('PASS: commander reputation changes actual vehicle damage.');
+
+const AM=E.create([teamWithSupply("ally"),teamWithSupply("enemy")],{balanced:false,ai:false,seed:"ammo"});
+const side=AM.teams[0],foot=side.groups.find(g=>g.kind==="infantry"),truck=side.vehicles.find(v=>v.kind==="logistics");
+assert.equal(foot.ammo,foot.total*100,"100 rounds per squad member");
+foot.x=22;foot.y=55;foot.target=0;truck.x=22;truck.y=55;truck.parked=true;foot.ammo=7;
+E.step(AM);assert.equal(foot.ammo,foot.total*100,"nearby crewed supply replenishes");
+truck.x=90;truck.y=90;foot.ammo=42;E.step(AM);assert.equal(foot.ammo,42,"ammo does not regenerate when supply is far");
+truck.x=foot.x;truck.y=foot.y;truck.destroyed=true;truck.respawnAt=100;E.step(AM);assert.equal(foot.ammo,42,"destroyed vehicle does not supply");
+assert.equal(E.buildHab,undefined);assert.equal(E.repair,undefined);assert.equal(side.habs,undefined);
+const attack=E.create([team("blue",1),team("red",1)],{balanced:false,ai:false,seed:"simultaneous"});
+for(const t of attack.teams){const g=t.groups[0];g.x=50;g.y=61;g.target=1;g.order="defend";g.suppression=0;g.morale=100}
+E.step(attack);assert.equal(attack.engagements.length,2);assert.ok(attack.engagements.every(e=>e.suppression===0&&e.morale===100),"both infantry attacks use pre-contact suppression and morale");
+assert.ok(attack.teams[0].groups[0].ammo<100 && attack.teams[1].groups[0].ammo<100,"both sides expend rounds");
+for(const t of equalized.teams)for(const v of t.vehicles)assert.equal(v.target,t.groups[v.group].target,"vehicles follow balanced squad target");
+console.log("PASS: nearby logistics supply, ammunition depletion, simultaneous infantry and initial vehicle targets.");
+
+const migrationStart=html.indexOf("function warMigrate(v){"),migrationEnd=html.indexOf("\ntry{const v=JSON.parse(localStorage",migrationStart);
+assert.ok(migrationStart>=0&&migrationEnd>migrationStart);
+const migrate=vm.runInNewContext(html.slice(migrationStart,migrationEnd)+"\nwarMigrate;");
+const old={match:{version:4,turn:5,teams:[{habs:[{id:"H"}],repairs:2,supplied:50,groups:[{ammo:12,total:9}],vehicles:[{repair:{at:6},cargo:120,destination:{type:"hab",id:"H"},destroyed:true,respawnAt:8}]}],log:[{turn:2,events:[{kind:"hab"},{kind:"capture",side:0,point:"A"}]}],orders:[{hab:"H"},{target:1}]}};
+const migrated=migrate(old).match;assert.equal(migrated.version,5);assert.equal(migrated.teams[0].groups[0].ammo,450);assert.equal(migrated.teams[0].habs,undefined);assert.equal(migrated.teams[0].vehicles[0].repair,undefined);assert.equal(migrated.teams[0].vehicles[0].respawnAt,25);assert.equal(migrated.log[0].events.length,1);assert.equal(migrated.orders.length,1);assert.equal(migrated.teams[0].supplied,0);
+console.log("PASS: saved-match migration removes old supply objects and preserves ammo proportion.");
