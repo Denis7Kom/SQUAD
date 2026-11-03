@@ -138,9 +138,9 @@ rv.x=55;rv.y=50;assert.equal(E.order(route,0,rg.index,0,'retreat'),true);E.step(
 console.log('PASS: CPU supply uses logistics and armored retreat follows orders.');
 const reputationTeam=(id,officer,soldier)=>({id,name:id,members:[{id:id+'a',rank:'Лейтенант',reputation:officer},{id:id+'b',rank:'Рядовой',role:'Боец',reputation:soldier}]});
 const rating=E.create([reputationTeam('r1',0,25),reputationTeam('r2',25,0)],{balanced:false,ai:false});
-assert.ok(Math.abs(rating.teams[0].groups[0].skill-.35)<1e-10);
-assert.ok(Math.abs(rating.teams[1].groups[0].skill-.65)<1e-10);
-console.log('PASS: combat rating uses actual player reputation and commander contribution.');
+assert.equal(rating.teams[0].groups[0].skill,0);
+assert.equal(rating.teams[1].groups[0].skill,1);
+console.log('PASS: combat rating uses the squad leader reputation.');
 // Unequal source teams must have equal deployed forces and account for every participant.
 const equalized=E.create([armoredTeam('large',3),team('small',4)],{balanced:true,ai:false});
 const deployed=t=>t.groups.reduce((n,g)=>n+g.total,0);
@@ -170,3 +170,50 @@ console.log('PASS: inactive specialists cannot provide repair or anti-tank fire.
 const lastTicket=E.create([carryTeam('victim2','БМП'),{id:'lastatt',name:'lastatt',members:[{id:'lc',rank:'Лейтенант'},{id:'lv',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Танк']}]}],{balanced:false,ai:false});
 const lt=lastTicket.teams[0],lv=lt.vehicles[0],lg=lt.groups.find(g=>g.kind==='infantry'),la=lastTicket.teams[1].vehicles[0];lt.tickets=1;lt.casualtyTickets=249;lv.x=30;lv.y=75;lv.parked=true;lv.hp=1;lg.x=30;lg.y=75;la.x=54;la.y=75;la.parked=true;lastTicket.teams[1].groups[la.group].x=54;lastTicket.teams[1].groups[la.group].y=75;assert.equal(E.transport(lastTicket,0,lg.index,lv.id,'board'),'');E.step(lastTicket);assert.equal(lt.tickets,0);assert.equal(lg.ready,0);assert.equal(lt.groups[lv.group].ready,0);assert.ok(lt.deaths>0);verify(lastTicket);
 console.log('PASS: complete vehicle losses and ticket accounting with only one ticket remaining.');
+
+
+// Changes to non-leaders' reputations must not affect any battle outcome.
+function mixedTeam(id,leader,other){
+ return {id,name:id,members:[
+  {id:id+"c1",name:"Commander",rank:"Лейтенант",reputation:leader},
+  {id:id+"c2",name:"Armor commander",rank:"Капитан",reputation:leader},
+  {id:id+"at",name:"AT",rank:"Рядовой",role:"Боец",specialties:["Лёгкая труба"],reputation:other},
+  {id:id+"tank",name:"Crew",rank:"Старший прапорщик",role:"Экипаж техники",specialties:["Танк"],reputation:other}
+ ]};
+}
+function simulate(other){
+ const m=E.create([mixedTeam("blue",20,other),mixedTeam("red",16,12)],{balanced:false,ai:false,seed:"reputation-invariance"});
+ for(const t of m.teams)for(const g of t.groups){g.x=45+10*g.side;g.y=50;g.order="defend";g.target=1}
+ for(const t of m.teams)for(const v of t.vehicles){v.x=45+10*v.side;v.y=50;v.parked=true}
+ for(let i=0;i<8;i++)E.step(m);
+ // Player data differs by design; compare all remaining state, including vehicle HP, losses and logs.
+ for(const t of m.teams)for(const p of t.roster){delete p.reputation;delete p.skill;delete p.skillSource}
+ return JSON.stringify(m);
+}
+assert.equal(simulate(0),simulate(25),"soldier and crew reputation never influence infantry, AT or armor outcomes");
+const commanderHigh=E.create([mixedTeam("a",25,0),mixedTeam("b",0,25)],{balanced:false,ai:false});
+for(const g of commanderHigh.teams[0].groups)assert.equal(g.skill,1);
+for(const g of commanderHigh.teams[1].groups)assert.equal(g.skill,0);
+const saved=JSON.parse(JSON.stringify(commanderHigh)),squad=saved.teams[0].groups[0];
+squad.skill=.123;squad.commanderDown=false;
+squad.activeIndices=squad.activeIndices.filter(i=>i!==squad.commanderIndex);
+squad.ready=squad.activeIndices.length;
+squad.queue.push({at:20,count:1,members:[squad.commanderIndex]});
+E.refreshRatings(saved);
+assert.equal(squad.skill,1,"stored score recalculated from commander, not survivors");
+assert.equal(squad.commanderDown,true,"missing commander gets penalty");
+squad.activeIndices.push(squad.commanderIndex);squad.ready++;squad.queue.pop();
+E.refreshRatings(saved);assert.equal(squad.commanderDown,false,"commander recovery removes penalty");
+const unrated=E.create([{id:"no",name:"Unrated",members:[{id:"x",rank:"Лейтенант"}]},team("other",1)],{balanced:false,ai:false});
+assert.equal(unrated.teams[0].groups[0].skill,.5,"unrated leader uses neutral value");
+console.log("PASS: leader-only combat rating, soldier/crew reputation invariance, recovery and saved-game migration.");
+
+function opposingTankHull(leader) {
+  const m=E.create([mixedTeam('a',leader,12),mixedTeam('b',12,12)],{balanced:false,ai:false,seed:'leader-effect'});
+  for(const t of m.teams) for(const g of t.groups){g.x=50;g.y=50;g.target=1;g.order='defend';}
+  for(const t of m.teams) for(const v of t.vehicles){v.x=45+10*v.side;v.y=50;v.parked=true;}
+  E.step(m);
+  return m.teams[1].vehicles[0].hp;
+}
+assert.ok(opposingTankHull(25)<opposingTankHull(0), 'commander reputation changes the damage actually dealt');
+console.log('PASS: commander reputation changes actual vehicle damage.');
