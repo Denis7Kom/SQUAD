@@ -143,7 +143,7 @@ sg.activeIndices=sg.activeIndices.filter(k=>k!==lostIndex);sg.ready=sg.activeInd
 const target=special.teams[1].vehicles[0];target.x=55;target.y=75;target.parked=true;special.teams[1].groups[target.group].x=55;special.teams[1].groups[target.group].y=75;
 E.step(special);assert.equal(sg.atShots||0,0,'inactive anti-tank specialist cannot fire');
 for(const t of special.teams)for(const g of t.groups){assert.equal(g.ready,g.activeIndices.length);assert.equal(new Set([...g.activeIndices,...g.queue.flatMap(q=>q.members)]).size,g.total)}
-console.log('PASS: inactive specialists cannot provide repair or anti-tank fire.');
+console.log('PASS: inactive specialists cannot provide anti-tank fire.');
 // Casualty counts can exceed the remaining tickets while the ledger stays bounded.
 const lastTicket=E.create([carryTeam('victim2','БМП'),{id:'lastatt',name:'lastatt',members:[{id:'lc',rank:'Лейтенант'},{id:'lv',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Танк']}]}],{balanced:false,ai:false});
 const lt=lastTicket.teams[0],lv=lt.vehicles[0],lg=lt.groups.find(g=>g.kind==='infantry'),la=lastTicket.teams[1].vehicles[0];lt.tickets=1;lt.casualtyTickets=249;lv.x=30;lv.y=75;lv.parked=true;lv.hp=1;lg.x=30;lg.y=75;la.x=54;la.y=75;la.parked=true;lastTicket.teams[1].groups[la.group].x=54;lastTicket.teams[1].groups[la.group].y=75;assert.equal(E.transport(lastTicket,0,lg.index,lv.id,'board'),'');E.step(lastTicket);assert.equal(lt.tickets,0);assert.equal(lg.ready,0);assert.equal(lt.groups[lv.group].ready,0);assert.ok(lt.deaths>0);verify(lastTicket);
@@ -217,3 +217,81 @@ const migrate=vm.runInNewContext(html.slice(migrationStart,migrationEnd)+"\nwarM
 const old={match:{version:4,turn:5,teams:[{habs:[{id:"H"}],repairs:2,supplied:50,groups:[{ammo:12,total:9}],vehicles:[{repair:{at:6},cargo:120,destination:{type:"hab",id:"H"},destroyed:true,respawnAt:8}]}],log:[{turn:2,events:[{kind:"hab"},{kind:"capture",side:0,point:"A"}]}],orders:[{hab:"H"},{target:1}]}};
 const migrated=migrate(old).match;assert.equal(migrated.version,5);assert.equal(migrated.teams[0].groups[0].ammo,450);assert.equal(migrated.teams[0].habs,undefined);assert.equal(migrated.teams[0].vehicles[0].repair,undefined);assert.equal(migrated.teams[0].vehicles[0].respawnAt,25);assert.equal(migrated.log[0].events.length,1);assert.equal(migrated.orders.length,1);assert.equal(migrated.teams[0].supplied,0);
 console.log("PASS: saved-match migration removes old supply objects and preserves ammo proportion.");
+
+ 
+// Headquarters resupply works before departure and on arrival, without a truck.
+for(const sideIndex of [0,1]){
+ const baseMatch=E.create([team("home",9),team("away",9)],{ai:false,balanced:false}),t=baseMatch.teams[sideIndex],g=t.groups[0];
+ g.x=t.base.x;g.y=t.base.y;g.ammo=0;g.order="advance";g.target=1;
+ E.step(baseMatch);assert.equal(g.ammo,900,"base refills before outgoing movement");
+ g.x=sideIndex?80:20;g.y=50;g.ammo=0;g.order="retreat";
+ for(let n=0;n<4;n++)E.step(baseMatch);
+ assert.equal(g.ammo,900,"returning squad refills at its own headquarters");
+ g.x=50;g.y=95;g.order="defend";g.target=1;g.ammo=123;E.step(baseMatch);
+ assert.equal(g.ammo,123,"no remote automatic refill");
+}
+const reinforcement=E.create([team("a",9),team("b",9)],{ai:false,balanced:false});
+const reinf=reinforcement.teams[0].groups[0],returning=reinf.activeIndices.pop();reinf.ready--;reinf.queue=[{at:1,count:1,members:[returning]}];reinf.ammo=0;reinf.x=50;reinf.y=95;reinf.target=1;reinf.order="defend";
+E.step(reinforcement);assert.equal(reinf.ammo,100,"returning soldier brings own basic ammunition");
+
+// Worst case: 25 separate two-member crews. Deployment is mirrored, separated, and true.
+function manyCrews(id){return {id,name:id,members:Array.from({length:25},(_,i)=>({id:id+"o"+i,rank:"Лейтенант"})).concat(Array.from({length:25},(_,i)=>({id:id+"v"+i,rank:"Старший прапорщик",role:"Экипаж танка",specialties:["Танк"]})))}}
+const scattered=E.create([manyCrews("a"),manyCrews("b")],{ai:false,balanced:false});
+assert.equal(scattered.teams[0].groups.length,25);
+for(const t of scattered.teams){
+ const rows=Math.ceil(t.groups.length/2),height=Math.max(640,rows*90);
+ for(let i=0;i<t.groups.length;i++)for(let j=i+1;j<t.groups.length;j++){
+  const a=t.groups[i],b=t.groups[j],dx=Math.abs(a.x-b.x)*640/100,dy=Math.abs(a.y-b.y)*height/100;
+  assert.ok(dx>=48||dy>=54,"mobile initial targets do not overlap at minimum map size");
+  assert.ok(Math.abs(a.x-b.x)*720/100>=64||dy>=70,"desktop icons and crew markers do not overlap");
+ }
+ for(const v of t.vehicles){const g=t.groups[v.group];assert.equal(v.x,g.x);assert.equal(v.y,g.y)}
+}
+for(let i=0;i<25;i++){assert.equal(scattered.teams[0].groups[i].x+scattered.teams[1].groups[i].x,100);assert.equal(scattered.teams[0].groups[i].y,scattered.teams[1].groups[i].y)}
+const oldStart=E.create([team("a",49),team("b",49)],{ai:false});delete oldStart.deploymentLayout;for(const t of oldStart.teams)for(const g of t.groups){g.x=t.base.x;g.y=50}
+E.refreshRatings(oldStart);assert.equal(oldStart.deploymentLayout,1);assert.ok(new Set(oldStart.teams[0].groups.map(g=>g.y)).size>1);
+const ongoing=JSON.parse(JSON.stringify(oldStart));ongoing.turn=1;delete ongoing.deploymentLayout;const ongoingPos=JSON.stringify(ongoing.teams.map(t=>t.groups.map(g=>[g.x,g.y])));
+E.refreshRatings(ongoing);assert.equal(JSON.stringify(ongoing.teams.map(t=>t.groups.map(g=>[g.x,g.y]))),ongoingPos,"ongoing games are never repositioned");
+
+// Death of a general/colonel, including as vehicle crew, creates one non-stacking team penalty.
+function shockMatch(rank="Генерал"){
+ const ct=(id,r)=>({id,name:id,members:[{id:id+"o",name:"Officer",rank:r},{id:id+"v",rank:"Старший прапорщик",role:"Экипаж танка",specialties:["Танк"]}]});
+ const m=E.create([ct("a",rank),ct("b","Лейтенант")],{balanced:false,ai:false,seed:"command-loss"});
+ for(const t of m.teams)for(const v of t.vehicles){v.x=45+v.side*10;v.y=50;v.parked=true}
+ m.teams[0].vehicles[0].hp=1;return m;
+}
+for(const rank of ["Генерал","Полковник"]){
+ const m=shockMatch(rank);E.step(m);
+ assert.equal(m.commandAlerts.length,1);assert.equal(m.commandAlerts[0].side,0);assert.equal(m.commandAlerts[0].rank,rank);
+ assert.equal(m.log.at(-1).events.filter(e=>e.kind==="command").length,1);
+ assert.equal(E.commandFactor(m,0),1,"new penalty starts next turn");
+ assert.equal(E.commandFactor(m,1),1,"opposing team is unaffected");
+ assert.equal(m.teams[0].commandShock.startsAt,2);assert.equal(m.teams[0].commandShock.untilTurn,4);
+ const restored=JSON.parse(JSON.stringify(m));
+ for(let turn=2;turn<=5;turn++){E.step(m);E.step(restored);assert.equal(E.commandFactor(m,0),turn<=4?.9:1);assert.equal(JSON.stringify(restored),JSON.stringify(m),"penalty survives save/reload");}
+ assert.equal(m.commandAlerts.length,1,"dead officer does not trigger repeated alerts");
+}
+const junior=shockMatch("Подполковник");E.step(junior);assert.equal((junior.commandAlerts||[]).length,0,"lower ranks do not trigger army penalty");
+const repeatShock=shockMatch();repeatShock.teams[0].commandShock={startsAt:0,untilTurn:1};E.step(repeatShock);
+assert.equal(E.commandFactor(repeatShock,0),.9,"a fresh loss does not cancel last active penalty turn");
+assert.equal(repeatShock.teams[0].commandShock.untilTurn,4,"repeat loss extends time");
+function infantryExpected(shocked){
+ const m=E.create([team("a",9),team("b",9)],{ai:false,balanced:false,seed:"shock-fire"});m.combatRate=.4;
+ for(const t of m.teams){const g=t.groups[0];g.x=50;g.y=61;g.target=1;g.order="defend"}
+ if(shocked)m.teams[0].commandShock={startsAt:1,untilTurn:3};
+ E.step(m);return m.engagements.find(e=>e.side===0).expected;
+}
+assert.ok(Math.abs(infantryExpected(true)-infantryExpected(false)*.9)<.015,"actual expected infantry fire is reduced by ten percent");
+function captureProgress(shocked){
+ const m=E.create([team("a",1),team("b",1)],{ai:false,balanced:false});
+ m.teams[0].groups[0].x=50;m.teams[0].groups[0].y=61;m.teams[0].groups[0].target=1;m.teams[0].groups[0].order="defend";
+ m.teams[1].groups[0].x=96;m.teams[1].groups[0].y=90;
+ if(shocked)m.teams[0].commandShock={startsAt:1,untilTurn:3};E.step(m);return m.points[1].progress;
+}
+assert.ok(Math.abs(captureProgress(true)-captureProgress(false)*.9)<1e-9,"capture penalty applies even at minimum capture rate");
+const noticeStart=html.indexOf("function warCommandNotice(m){"),noticeEnd=html.indexOf("const warNames=",noticeStart);
+const notice=new Function("BattleEngine","wt","esc",html.slice(noticeStart,noticeEnd)+"return warCommandNotice;")(E,(ru,en)=>ru,s=>String(s).replaceAll("<","&lt;"));
+const uiShock=shockMatch();uiShock.teams[0].roster[0].name="<bad>";E.step(uiShock);
+assert.ok(notice(uiShock).includes("ГЕНЕРАЛ ПОГИБ"));assert.ok(notice(uiShock).includes("&lt;bad>"));assert.ok(!notice(uiShock).includes("<bad>"));
+for(let n=0;n<4;n++)E.step(uiShock);assert.equal(notice(uiShock),"","warning and status disappear after expiry");
+console.log("PASS: base and reinforcement ammo, separated mirrored deployment, senior officer alerts, exact shock duration, non-stacking, real fire/capture penalty and safe warning rendering.");
