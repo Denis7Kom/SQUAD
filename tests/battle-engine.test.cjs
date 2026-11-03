@@ -12,7 +12,7 @@ const E = vm.runInNewContext(html.slice(start, end) + "\nBattleEngine;");
 function team(id, size) { return { id, name: id, members: Array.from({ length: size }, (_, i) => ({ id: id + i, name: "Player " + i, rank: "Лейтенант", role: "Сквадлидер" })) }; }
 function verify(m) {
   for (const t of m.teams) {
-    assert.equal(t.tickets, E.START_TICKETS - t.deaths - t.bleed - (t.vehicleLoss || 0), "ticket ledger");
+    assert.equal(t.tickets, E.START_TICKETS - t.casualtyTickets - t.bleed - (t.vehicleLoss || 0), "ticket ledger");
     assert.ok(t.tickets >= 0 && t.tickets <= E.START_TICKETS);
     for (const g of t.groups) {
       assert.ok(g.ready >= 0 && g.ready <= g.total);
@@ -27,7 +27,7 @@ const teams = [team("blue", 49), team("red", 42)];
 let checked = 0;
 for (const ai of [false, true]) for (let i = 0; i < 400; i++) {
   const m = E.create(teams, { seed: "test-" + i, ai });
-  assert.equal(m.teams[0].roster.length, 42); assert.equal(m.teams[1].roster.length, 42);
+  assert.equal(m.teams[0].groups.reduce((n,g)=>n+g.total,0), m.teams[1].groups.reduce((n,g)=>n+g.total,0));
   finish(m); const before = JSON.stringify(m); E.step(m); assert.equal(JSON.stringify(m), before);
   checked++;
 }
@@ -54,7 +54,7 @@ assert.throws(() => E.create([{id:"a",name:"A",members:[{id:"1",rank:"Генер
 const led = E.create([team("blue",49),team("red",42)]);
 for (const t of led.teams) {
   const assigned = t.groups.flatMap(g=>g.memberIndices);
-  assert.equal(new Set(assigned).size,t.roster.length,"one membership per player");
+  assert.equal(new Set([...assigned,...t.reserves]).size,t.roster.length,"one membership per player");
   for (const g of t.groups) assert.equal(E.isCommander(t.roster[g.commanderIndex]),true,"squad commander");
 }
 
@@ -109,7 +109,7 @@ assert.equal(E.supply(supplies,0,truck.id,'deliver'),'');
 assert.equal(T.habs[0].ammo,120);assert.equal(truck.cargo,0);
 inf.ammo=3;inf.order='defend';inf.target=0;supplies.points[0].x=inf.x;supplies.points[0].y=inf.y;
 E.step(supplies);assert.ok(inf.ammo>3);assert.ok(T.habs[0].ammo<120,'resupply consumes HAB stock');
-truck.hp=40;truck.x=inf.x;truck.y=inf.y;assert.equal(E.repair(supplies,0,truck.id),'');assert.equal(truck.hp,70);
+truck.hp=40;truck.x=T.base.x;truck.y=T.base.y;truck.parked=true;assert.equal(E.repair(supplies,0,truck.id),'');assert.equal(truck.hp,40);assert.equal(E.repair(supplies,0,truck.id),'invalid');E.step(supplies);E.step(supplies);assert.equal(truck.hp,40);E.step(supplies);assert.equal(truck.hp,70);
 truck.x=80;truck.y=80;assert.equal(E.repair(supplies,0,truck.id),'engineer');
 truck.x=T.base.x;truck.y=T.base.y;assert.equal(E.supply(supplies,0,truck.id,'load'),'');assert.equal(truck.cargo,120);
 const fog=E.create([team('b',1),team('r',1)],{balanced:false,ai:false});
@@ -141,3 +141,32 @@ const rating=E.create([reputationTeam('r1',0,25),reputationTeam('r2',25,0)],{bal
 assert.ok(Math.abs(rating.teams[0].groups[0].skill-.35)<1e-10);
 assert.ok(Math.abs(rating.teams[1].groups[0].skill-.65)<1e-10);
 console.log('PASS: combat rating uses actual player reputation and commander contribution.');
+// Unequal source teams must have equal deployed forces and account for every participant.
+const equalized=E.create([armoredTeam('large',3),team('small',4)],{balanced:true,ai:false});
+const deployed=t=>t.groups.reduce((n,g)=>n+g.total,0);
+assert.equal(deployed(equalized.teams[0]),deployed(equalized.teams[1]));
+for(const t of equalized.teams){const all=[...t.groups.flatMap(g=>g.memberIndices),...t.reserves];assert.equal(new Set(all).size,t.roster.length);assert.equal(all.length,t.roster.length);for(const g of t.groups)assert.ok(E.isCommander(t.roster[g.commanderIndex]));}
+const carryTeam=(id,kind)=>({id,name:id,members:[{id:id+'off',rank:'Капитан',role:'Commander'},{id:id+'off2',rank:'Лейтенант',role:'Commander'},{id:id+'veh',rank:'Старший прапорщик',role:'Экипаж техники',specialties:[kind]},{id:id+'foot',rank:'Рядовой',role:'Боец',specialties:['Стрелок']}]});
+for(const kind of ['БМП','БТР','Вертолёт']){
+ const m=E.create([carryTeam('victim',kind),{id:'att',name:'att',members:[{id:'attc',rank:'Лейтенант'},{id:'attv',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Танк']}]}],{balanced:false,ai:false});
+ const t=m.teams[0],v=t.vehicles.find(v=>v.kind===(kind==='БМП'?'ifv':kind==='БТР'?'apc':'helicopter')),g=t.groups.find(g=>g.kind==='infantry'),att=m.teams[1].vehicles[0];
+ v.x=30;v.y=75;v.parked=true;v.hp=1;g.x=30;g.y=75;att.x=54;att.y=75;att.parked=true;m.teams[1].groups[att.group].x=54;m.teams[1].groups[att.group].y=75;
+ assert.equal(E.transport(m,0,g.index,v.id,'board'),'');const crewCount=v.crew.length,passengerCount=g.ready;E.step(m);assert.equal(v.destroyed,true,kind+' destroyed');assert.equal(g.ready,0,kind+' passenger squad lost');assert.equal(t.groups[v.group].ready,0,kind+' crew lost');assert.equal(t.deaths,crewCount+passengerCount);verify(m);
+}
+// Enemy HAB removal respects proximity and removes the supply source.
+const habMatch=E.create([team('blue',1),team('red',1)],{balanced:false,ai:false});
+const blue=habMatch.teams[0].groups[0],red=habMatch.teams[1].groups[0];blue.x=20;blue.y=20;red.x=80;red.y=80;assert.equal(E.buildHab(habMatch,0,blue.index),'');const h=habMatch.teams[0].habs[0];assert.equal(E.destroyHab(habMatch,1,red.index,h.id),'invalid');red.x=h.x+5;red.y=h.y;assert.equal(E.destroyHab(habMatch,1,red.index,h.id),'');assert.equal(habMatch.teams[0].habs.length,0);
+// A repair interrupts if its source leaves before the third turn.
+const repairMatch=E.create([teamWithSupply('x'),teamWithSupply('y')],{balanced:false,ai:false});const rt=repairMatch.teams[0],rv2=rt.vehicles[0];rv2.hp=40;rv2.x=rt.base.x;rv2.y=rt.base.y;rv2.parked=true;assert.equal(E.repair(repairMatch,0,rv2.id),'');rv2.x=60;rv2.y=90;E.step(repairMatch);assert.equal(rv2.repair,null);assert.equal(rv2.hp,40);
+console.log('PASS: actual roster balancing, complete crew/passenger loss, HAB destruction and interruptible repair.');
+const special=E.create([teamWithSupply('special'),{id:'armor',name:'armor',members:[{id:'armorC',rank:'Лейтенант'},{id:'armorV',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Танк']}]}],{balanced:false,ai:false});
+const st=special.teams[0],sg=st.groups.find(g=>g.kind==='infantry'),sv=st.vehicles[0],lostIndex=st.roster.findIndex(p=>p.name==='Engineer');
+sg.activeIndices=sg.activeIndices.filter(k=>k!==lostIndex);sg.ready=sg.activeIndices.length;sg.queue.push({at:100,count:1,members:[lostIndex]});sg.x=45;sg.y=75;sg.target=1;sv.x=45;sv.y=75;sv.parked=true;sv.hp=40;
+const target=special.teams[1].vehicles[0];target.x=55;target.y=75;target.parked=true;special.teams[1].groups[target.group].x=55;special.teams[1].groups[target.group].y=75;
+assert.equal(E.repair(special,0,sv.id),'engineer','inactive engineer cannot repair');E.step(special);assert.equal(sg.atShots||0,0,'inactive anti-tank specialist cannot fire');
+for(const t of special.teams)for(const g of t.groups){assert.equal(g.ready,g.activeIndices.length);assert.equal(new Set([...g.activeIndices,...g.queue.flatMap(q=>q.members)]).size,g.total)}
+console.log('PASS: inactive specialists cannot provide repair or anti-tank fire.');
+// Casualty counts can exceed the remaining tickets while the ledger stays bounded.
+const lastTicket=E.create([carryTeam('victim2','БМП'),{id:'lastatt',name:'lastatt',members:[{id:'lc',rank:'Лейтенант'},{id:'lv',rank:'Старший прапорщик',role:'Экипаж техники',specialties:['Танк']}]}],{balanced:false,ai:false});
+const lt=lastTicket.teams[0],lv=lt.vehicles[0],lg=lt.groups.find(g=>g.kind==='infantry'),la=lastTicket.teams[1].vehicles[0];lt.tickets=1;lt.casualtyTickets=249;lv.x=30;lv.y=75;lv.parked=true;lv.hp=1;lg.x=30;lg.y=75;la.x=54;la.y=75;la.parked=true;lastTicket.teams[1].groups[la.group].x=54;lastTicket.teams[1].groups[la.group].y=75;assert.equal(E.transport(lastTicket,0,lg.index,lv.id,'board'),'');E.step(lastTicket);assert.equal(lt.tickets,0);assert.equal(lg.ready,0);assert.equal(lt.groups[lv.group].ready,0);assert.ok(lt.deaths>0);verify(lastTicket);
+console.log('PASS: complete vehicle losses and ticket accounting with only one ticket remaining.');
