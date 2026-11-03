@@ -112,13 +112,13 @@ const respawn=E.create([armoredTeam('x',1),armoredTeam('y',1)],{balanced:false,a
 const vehicle=respawn.teams[0].vehicles[0];vehicle.destroyed=true;vehicle.hp=0;vehicle.respawnAt=2;
 E.step(respawn);assert.equal(vehicle.destroyed,true);E.step(respawn);assert.equal(vehicle.destroyed,false);assert.equal(vehicle.hp,100);assert.equal(vehicle.x,respawn.teams[0].base.x);
 const orders=E.create([team('x',10),team('y',10)],{balanced:false,ai:false});
-for(const type of ['advance','attack','defend','flank','recon','retreat','escort'])assert.equal(E.order(orders,0,0,1,type),true,type);
+for(const type of ['attack','defend','flank','recon'])assert.equal(E.order(orders,0,0,1,type),true,type);
 assert.equal(E.order(orders,0,0,1,'fly'),false);
 console.log('PASS: fog, terrain, contested capture, vehicle respawn and orders.');
 const route=E.create([armoredTeam('p',1),armoredTeam('q',1)],{balanced:false,ai:false});
 const rv=route.teams[0].vehicles[0],rg=route.teams[0].groups[rv.group];
-rv.x=55;rv.y=50;assert.equal(E.order(route,0,rg.index,0,'retreat'),true);E.step(route);assert.ok(rv.x<55,'armored retreat returns toward own main base');
-console.log('PASS: armored retreat follows orders.');
+rv.x=55;rv.y=50;assert.equal(E.order(route,0,rg.index,0,'attack'),true);E.step(route);assert.ok(rv.x<55,'armor follows the selected attack objective');
+console.log('PASS: armor follows attack orders.');
 const reputationTeam=(id,officer,soldier)=>({id,name:id,members:[{id:id+'a',rank:'Лейтенант',reputation:officer},{id:id+'b',rank:'Рядовой',role:'Боец',reputation:soldier}]});
 const rating=E.create([reputationTeam('r1',0,25),reputationTeam('r2',25,0)],{balanced:false,ai:false});
 assert.equal(rating.teams[0].groups[0].skill,0);
@@ -224,7 +224,7 @@ for(const sideIndex of [0,1]){
  const baseMatch=E.create([team("home",9),team("away",9)],{ai:false,balanced:false}),t=baseMatch.teams[sideIndex],g=t.groups[0];
  g.x=t.base.x;g.y=t.base.y;g.ammo=0;g.order="advance";g.target=1;
  E.step(baseMatch);assert.equal(g.ammo,900,"base refills before outgoing movement");
- g.x=sideIndex?80:20;g.y=50;g.ammo=0;g.order="retreat";
+ g.x=sideIndex?88:12;g.y=50;g.ammo=0;g.order="defend";
  for(let n=0;n<4;n++)E.step(baseMatch);
  assert.equal(g.ammo,900,"returning squad refills at its own headquarters");
  g.x=50;g.y=95;g.order="defend";g.target=1;g.ammo=123;E.step(baseMatch);
@@ -295,3 +295,17 @@ const uiShock=shockMatch();uiShock.teams[0].roster[0].name="<bad>";E.step(uiShoc
 assert.ok(notice(uiShock).includes("ГЕНЕРАЛ ПОГИБ"));assert.ok(notice(uiShock).includes("&lt;bad>"));assert.ok(!notice(uiShock).includes("<bad>"));
 for(let n=0;n<4;n++)E.step(uiShock);assert.equal(notice(uiShock),"","warning and status disappear after expiry");
 console.log("PASS: base and reinforcement ammo, separated mirrored deployment, senior officer alerts, exact shock duration, non-stacking, real fire/capture penalty and safe warning rendering.");
+
+for(const oldOrder of ["advance","retreat","escort"])assert.equal(E.order(orders,0,0,1,oldOrder),false,"only four tactical orders accepted");
+const legacyOrders=E.create([team("la",9),team("lb",9)],{ai:false,balanced:false});legacyOrders.teams[0].groups[0].order="escort";legacyOrders.teams[0].groups[0].escortGroup=1;E.refreshRatings(legacyOrders);assert.equal(legacyOrders.teams[0].groups[0].order,"attack");assert.equal(legacyOrders.teams[0].groups[0].escortGroup,undefined);
+const holding=E.create([team("ha",9),team("hb",9)],{ai:false,balanced:false});const hg=holding.teams[0].groups[0];
+E.order(holding,0,0,1,"defend");hg.x=4;hg.y=90;E.step(holding);assert.equal(hg.entrenched,false,"hold has no free cover during approach");
+for(let i=0;i<20;i++)E.step(holding);assert.equal(hg.entrenched,true,"hold entrenches on arrival");const holdPos=[hg.x,hg.y];E.step(holding);assert.deepEqual([hg.x,hg.y],holdPos,"hold stays at its position");
+const flanking=E.create([team("fa",9),team("fb",9)],{ai:false,balanced:false});const fg=flanking.teams[0].groups[0];
+E.order(flanking,0,0,1,"flank");const waypoint=E.destination(flanking,fg);fg.x=waypoint.x;fg.y=waypoint.y;E.step(flanking);assert.equal(fg.flankStage,1,"flank reaches the second leg");assert.notDeepEqual(E.destination(flanking,fg),waypoint);E.order(flanking,0,0,2,"flank");assert.equal(fg.flankStage,0,"new target restarts flank route");
+const reco=E.create([team("ra",9),team("rb",9)],{ai:false,balanced:false});const scout=reco.teams[0].groups[0];E.order(reco,0,0,1,"recon");const observation=E.destination(reco,scout);assert.ok(observation.x<reco.points[1].x,"recon observes from own side");assert.equal(Math.abs(observation.y-reco.points[1].y),8);
+const clusterStart=html.indexOf("function warPointClusters(m){"),clusterEnd=html.indexOf("function warClusterCards",clusterStart);
+const cluster=new Function("warSelected","BattleEngine",html.slice(clusterStart,clusterEnd)+"return warPointClusters;")([0,0],E);
+const pile=E.create([team("pa",50),team("pb",50)],{ai:false,balanced:false});for(const g of pile.teams[0].groups){g.x=50;g.y=61}const beforePile=JSON.stringify(pile);
+const sets=cluster(pile);const icons=sets.flatMap(x=>x.groups);assert.equal(icons.filter(g=>g.side===0).length,pile.teams[0].groups.length,"all collocated squads get individual list entries");assert.equal(new Set(icons.map(g=>g.id)).size,icons.length,"no duplicate list membership");assert.equal(JSON.stringify(pile),beforePile,"visual clustering never changes simulation coordinates");assert.ok(sets.every(x=>x.point.id==="B"),"nearby units belong to the correct objective");
+console.log("PASS: four orders, legacy normalization, hold positions, two-stage flanks, recon stand-off and non-mutating objective lists.");
