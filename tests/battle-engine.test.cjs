@@ -313,7 +313,7 @@ console.log("PASS: four orders, legacy normalization, hold positions, two-stage 
 {
  const nearModel=E.create([team("near",9),team("other",9)],{ai:false,balanced:false});
  const objective=nearModel.points[1],unit=nearModel.teams[0].groups[0];
- for(const [distance,expected] of [[0,true],[7.99,true],[8,false],[12,false],[17.99,false]]){
+ for(const [distance,expected] of [[0,true],[8.99,true],[9,false],[12,false],[17.99,false]]){
   unit.x=objective.x+distance;unit.y=objective.y;
   assert.equal(cluster(nearModel).some(c=>c.groups.some(g=>g.id===unit.id)),expected,"objective-list distance "+distance);
  }
@@ -400,3 +400,18 @@ assert.ok(majorityCapture(9,8)>0,'blue numerical majority captures despite defen
 assert.ok(majorityCapture(8,9)<0,'red numerical majority captures despite defenders');
 assert.ok(majorityCapture(12,8)>majorityCapture(9,8),'larger advantage captures faster');
 console.log('PASS: numerical capture majority, equality and proportional speed');
+
+{
+ const start=html.indexOf("function warClusterMapMinHeight(clusters){"),end=html.indexOf("function warMap(m){",start);
+ assert.ok(start>=0&&end>start,"list sizing helper exists");
+ const minHeight=new Function(html.slice(start,end)+"\nreturn warClusterMapMinHeight;")();
+ assert.equal(minHeight([]),0);
+ for(const y of [32,61])for(const count of [1,2,6,15,25]){
+  const group=Array.from({length:count},()=>({side:0}));
+  const height=minHeight([{point:{x:50,y},groups:group}]);
+  assert.ok(height*(1-y/100)+18+1e-6>=count*35+12,"all "+count+" rows fit at "+y+"%");
+  const both=minHeight([{point:{x:50,y},groups:group.concat(group.map(()=>({side:1})))}]);
+  assert.equal(both,height,"parallel sides use their largest list, not the sum");
+ }
+ console.log("PASS: objective lists grow for one or many squads on each side without clipping.");
+}
