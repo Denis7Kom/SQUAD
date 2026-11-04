@@ -309,3 +309,28 @@ const cluster=new Function("warSelected","BattleEngine",html.slice(clusterStart,
 const pile=E.create([team("pa",50),team("pb",50)],{ai:false,balanced:false});for(const g of pile.teams[0].groups){g.x=50;g.y=61}const beforePile=JSON.stringify(pile);
 const sets=cluster(pile);const icons=sets.flatMap(x=>x.groups);assert.equal(icons.filter(g=>g.side===0).length,pile.teams[0].groups.length,"all collocated squads get individual list entries");assert.equal(new Set(icons.map(g=>g.id)).size,icons.length,"no duplicate list membership");assert.equal(JSON.stringify(pile),beforePile,"visual clustering never changes simulation coordinates");assert.ok(sets.every(x=>x.point.id==="B"),"nearby units belong to the correct objective");
 console.log("PASS: four orders, legacy normalization, hold positions, two-stage flanks, recon stand-off and non-mutating objective lists.");
+
+{
+ const nearModel=E.create([team("near",9),team("other",9)],{ai:false,balanced:false});
+ const objective=nearModel.points[1],unit=nearModel.teams[0].groups[0];
+ for(const [distance,expected] of [[0,true],[5.99,true],[6,false],[12,false],[17.99,false]]){
+  unit.x=objective.x+distance;unit.y=objective.y;
+  assert.equal(cluster(nearModel).some(c=>c.groups.some(g=>g.id===unit.id)),expected,"objective-list distance "+distance);
+ }
+ const htmlScript=html.match(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/)[1];
+ const examples=vm.runInNewContext(htmlScript.slice(0,htmlScript.indexOf('const key="squad-command-local-v1"'))+"\nsampleTeams;");
+ const small=examples.find(t=>t.id==="team-volna"),tiny=examples.find(t=>t.id==="team-fakel");
+ assert.equal(small.members.length,18);assert.equal(tiny.members.length,9);
+ for(const t of [small,tiny]){
+  const ids=new Set(t.members.map(m=>m.id));assert.equal(ids.size,t.members.length);
+  assert.ok(t.members.every(m=>!m.parent||ids.has(m.parent)),"all parents belong to the team");
+ }
+ for(const [a,b] of [[small,tiny],[small,examples[0]],[tiny,examples[1]]])for(const balanced of [true,false]){
+  const match=E.create([a,b],{balanced,ai:false,seed:"new-sample-teams"});
+  assert.equal(E.commandIssues(match).length,0);assert.equal(E.armorIssues(match).length,0);
+  assert.ok(match.teams[0].groups.some(g=>g.kind==="infantry"));
+  finish(match);
+ }
+ assert.ok(E.create([small,tiny],{balanced:false}).teams[0].groups.some(g=>g.kind==="apc"));
+ console.log("PASS: objective-list boundary and new playable sample teams.");
+}
