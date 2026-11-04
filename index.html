@@ -618,7 +618,8 @@ sampleTeams[0].members.push({id:"d9",name:"Sever_Actual",rank:"Подполко�
 sampleTeams[1].members.push({id:"w19",name:"Bastion_Deputy",rank:"Подполковник",role:"Заместитель командира",branch:"officer",parent:"w1"});
 /* В крупных готовых составах координатор техники подчиняется полковнику. */
 sampleTeams[2].members.push({id:"e19",name:"Rubezh_Colonel",rank:"Полковник",role:"Командование",branch:"officer",parent:"e0"});
-sampleTeams[0].members.push({id:"d10",name:"Sever_Tech",rank:"tech-coordinator",role:"Координатор техники",branch:"officer",parent:"d2",termMonths:1,termStart:"2026-10-01"});
+/* У демонстрационного координатора каждый календарный месяц начинается новый пример срока. */
+sampleTeams[0].members.push({id:"d10",name:"Sever_Tech",rank:"tech-coordinator",role:"Координатор техники",branch:"officer",parent:"d2",termMonths:1,termStart:localToday().slice(0,7)+"-01"});
 sampleTeams[1].members.push({id:"w20",name:"Bastion_Tech",rank:"tech-coordinator",role:"Координатор техники",branch:"officer",parent:"w1",termMonths:3,termStart:"2026-10-01"});
 sampleTeams[2].members.push({id:"e20",name:"Rubezh_Tech",rank:"tech-coordinator",role:"Координатор техники",branch:"officer",parent:"e19",termMonths:6,termStart:"2026-10-01"});
 /* Дополненные демонстрационные составы: большой, средний и малый. */
@@ -930,6 +931,7 @@ function expireAppointments(){
  const today=localToday(), before=JSON.stringify(state);let changed=false, demoChanged=false;
  function process(t,persist){
   if(!Array.isArray(t.members))return;
+  if(!persist&&t.id==="demo-team"){const example=t.members.find(m=>m.id==="d10");if(example)example.termStart=today.slice(0,7)+"-01"}
   const expired=t.members.filter(m=>(isAdvisor(m)||isTechCoordinator(m))&&validTermMonths(m.termMonths)&&validTermDate(m.termStart)&&today>=coordinatorTermEnd(m.termStart,m.termMonths));
   for(const m of expired){
    const end=coordinatorTermEnd(m.termStart,m.termMonths);
