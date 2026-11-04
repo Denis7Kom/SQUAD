@@ -374,3 +374,17 @@ console.log("PASS: four orders, legacy normalization, hold positions, two-stage 
  assert.ok(!render(model,[{point,groups:[unit(0,0)]}]).includes("rail-side-red"));
  console.log("PASS: blue and red objective lists stay separated and anchored to the objective.");
 }
+
+{
+ for(const rank of ["Генерал","Полковник","Подполковник","Майор","Капитан","Старший лейтенант","Лейтенант","Младший лейтенант"]){
+  const match=shockMatch(rank);E.step(match);
+  const group=match.teams[0].groups[0];
+  assert.equal(group.commanderDown,true,rank+" commander is out");
+  assert.ok(match.teams[0].tickets>0&&match.teams[1].tickets>0);
+  assert.equal(match.status,"running",rank+" loss does not end the match");
+  assert.equal(E.commandIssues(match).length,0,"out-of-action commander remains assigned");
+  assert.equal(E.armorIssues(match).length,0,"destroyed vehicle does not invalidate the squad");
+  const turn=match.turn;E.step(match);assert.equal(match.turn,turn+1,"battle advances after commander loss");
+ }
+ console.log("PASS: commander losses never end matches while tickets and time remain.");
+}
