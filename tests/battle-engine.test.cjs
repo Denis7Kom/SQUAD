@@ -334,3 +334,26 @@ console.log("PASS: four orders, legacy normalization, hold positions, two-stage 
  assert.ok(E.create([small,tiny],{balanced:false}).teams[0].groups.some(g=>g.kind==="apc"));
  console.log("PASS: objective-list boundary and new playable sample teams.");
 }
+
+{
+ const pageScript=html.match(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/)[1];
+ const seedCode=pageScript.slice(0,pageScript.indexOf('const key="squad-command-local-v1"'));
+ const expireStart=pageScript.indexOf("function expireAppointments(){");
+ const expireCode=pageScript.slice(expireStart,pageScript.indexOf("/* The position overview",expireStart));
+ let simulated="2026-11-30T12:00:00";
+ class TestDate extends Date { constructor(...args){super(...(args.length?args:[simulated]))} static now(){return new Date(simulated).getTime()} }
+ const scenario=seedCode+`
+ const state={teams:[{id:"real",name:"Real",members:[{id:"r",name:"User",rank:"tech-coordinator",role:"Координатор техники",termMonths:1,termStart:"2026-10-01"}]}]};
+ function save(){return true} function logDecision(){}
+ `+expireCode+`
+ const ids=sampleTeams.flatMap(t=>t.members.filter(m=>isAdvisor(m)||isTechCoordinator(m)).map(m=>m.id));
+ expireAppointments();advance();expireAppointments();
+ const active=sampleTeams.flatMap(t=>t.members.filter(m=>isAdvisor(m)||isTechCoordinator(m)).map(m=>({id:m.id,end:coordinatorTermEnd(m.termStart,m.termMonths)})));
+ ({ids,active,realCount:state.teams[0].members.length,today:localToday()});
+ `;
+ const result=vm.runInNewContext(scenario,{Date:TestDate,advance:()=>{simulated="2030-01-01T12:00:00"}});
+ assert.equal(result.active.length,result.ids.length,"all demo appointments remain visible");
+ assert.ok(result.active.every(m=>m.end>result.today),"demo appointments are current");
+ assert.equal(result.realCount,0,"real expired appointment still ends");
+ console.log("PASS: demo appointments renew and real appointments still expire.");
+}

@@ -931,7 +931,14 @@ function expireAppointments(){
  const today=localToday(), before=JSON.stringify(state);let changed=false, demoChanged=false;
  function process(t,persist){
   if(!Array.isArray(t.members))return;
-  if(!persist&&t.id==="demo-team"){const example=t.members.find(m=>m.id==="d10");if(example)example.termStart=today.slice(0,7)+"-01"}
+  if(!persist)for(const m of t.members){
+   if(!(isAdvisor(m)||isTechCoordinator(m))||!validTermMonths(m.termMonths)||!validTermDate(m.termStart))continue;
+   while(today>=coordinatorTermEnd(m.termStart,m.termMonths)){
+    const next=coordinatorTermEnd(m.termStart,m.termMonths);
+    if(!next||next<=m.termStart)break;
+    m.termStart=next;demoChanged=true;
+   }
+  }
   const expired=t.members.filter(m=>(isAdvisor(m)||isTechCoordinator(m))&&validTermMonths(m.termMonths)&&validTermDate(m.termStart)&&today>=coordinatorTermEnd(m.termStart,m.termMonths));
   for(const m of expired){
    const end=coordinatorTermEnd(m.termStart,m.termMonths);
