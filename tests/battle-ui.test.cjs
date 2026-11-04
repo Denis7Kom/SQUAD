@@ -51,22 +51,34 @@ assert.ok(html.includes('help.scrollIntoView('),"explicit help navigation remain
 console.log("PASS: notices, errors and result preserve map identity, focus, expansion and scroll; user scrolling remains possible.");
 
 {
- const start=html.indexOf("function warTick(render=true){"),end=html.indexOf("function warExport(",start);
- assert.ok(start>=0&&end>start,"battle timer functions exist");assert.ok(html.includes("warSpeed=10000"),"default interval is 10 seconds");
+ const ps=html.indexOf("function warPersist(){"),pe=html.indexOf("function warArchive(){",ps);
+ const ts=html.indexOf("function warTick(render=true){"),te=html.indexOf("function warExport(",ts);
+ const rs=html.indexOf('if(warResumeAt!==null&&warMatch&&warMatch.status!=="finished"&&warCanRun())'),re=html.indexOf("\n",rs);
+ assert.ok(ps>=0&&pe>ps&&ts>=0&&te>ts&&rs>=0&&re>rs);
+ assert.ok(html.includes("warSpeed=5000"),"default interval is five seconds");
  const fixture=new Function(`
- let warMatch={status:"running",turn:0,log:[]},warTimer=null,warSpeed=10000,interval=0,pauses=0;
- const BattleEngine={step(m){m.turn++;m.log.push({events:[{kind:"capture",side:0}]})}};
- function warCanRun(){return true} function warPersist(){} function battleRender(){} function warArchive(){}
- function setInterval(fn,ms){interval=ms;return 99} function warPause(){warTimer=null;pauses++}
- `+html.slice(start,end)+`
- return {play:warPlay,tick:warTick,state:()=>({interval,warTimer,pauses,turn:warMatch.turn})};
+ let now=100000,warMatch={status:"running",turn:0,limit:120,log:[]},warTimer=null,warSpeed=5000,warNextTickAt=null,warResumeAt=null,interval=0,pauses=0,saved=null,warError="";
+ const Date={now:()=>now},warKey="battle",warConfig={},wt=(a,b)=>a;
+ const localStorage={setItem(k,v){saved=JSON.parse(v)}};
+ const BattleEngine={LIMIT:120,step(m){m.turn++;m.log.push({events:[{kind:"capture",side:0}]});if(m.turn>=m.limit)m.status="finished"}};
+ function warCanRun(){return true} function battleRender(){} function warArchive(){}
+ function setInterval(fn,ms){interval=ms;return 99} function clearInterval(){} function $(id){return {classList:{contains:()=>false}}}
+ `+html.slice(ps,pe)+html.slice(ts,te)+`
+ function reload(){const v=JSON.parse(JSON.stringify(saved));warMatch=v.match;warTimer=null;warNextTickAt=null;warResumeAt=v.running?v.nextTickAt:null;
+ `+html.slice(rs,re)+`
+ }
+ return {play:warPlay,run:warRunDueTicks,reload,advance:ms=>now+=ms,state:()=>({interval,warTimer,next:warNextTickAt,turn:warMatch.turn,saved})};
  `)();
- fixture.play();assert.equal(fixture.state().interval,10000,"one turn takes 10 seconds");
- fixture.tick(false);assert.equal(fixture.state().turn,1);
- assert.equal(fixture.state().warTimer,99,"capture does not pause the timer");
- assert.equal(fixture.state().pauses,0,"no automatic pause on capture");
- fixture.play();assert.equal(fixture.state().warTimer,null,"manual pause remains available");
+ fixture.play();assert.equal(fixture.state().interval,5000);assert.equal(fixture.state().saved.running,true);
+ fixture.advance(4999);fixture.run();assert.equal(fixture.state().turn,0);
+ fixture.advance(1);fixture.run();assert.equal(fixture.state().turn,1);assert.equal(fixture.state().warTimer,99,"capture does not pause");
+ fixture.advance(15000);fixture.run();assert.equal(fixture.state().turn,4,"delayed timers catch up");
+ fixture.play();assert.equal(fixture.state().warTimer,null);assert.equal(fixture.state().saved.running,false,"manual pause saved");
+ fixture.advance(10000);fixture.run();assert.equal(fixture.state().turn,4,"paused match does not advance");
+ fixture.play();fixture.advance(10000);fixture.reload();assert.equal(fixture.state().turn,6,"reload catches up running match");
+ assert.equal(fixture.state().saved.running,true);fixture.play();assert.equal(fixture.state().saved.running,false);
  for(const removed of ['id="war-speed"','id="war-pause-capture"','data-war-action="step"','data-war-action="finish"','<kbd>N</kbd>'])assert.ok(!html.includes(removed),removed+" removed");
  assert.ok(html.includes("9 человек — 1800 патронов"));assert.ok(html.includes("9 soldiers means 1800 rounds"));
- console.log("PASS: fixed 10-second turns, capture keeps running, manual pause, no skip controls, correct ammo examples.");
+ assert.ok(html.includes('if(v.match.status!=="finished"&&v.match.limit===60)v.match.limit=BattleEngine.LIMIT'),"unfinished legacy matches extend");
+ console.log("PASS: five-second turns, capture continues, delayed callbacks and reload catch up, manual pause persists.");
 }
