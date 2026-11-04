@@ -198,24 +198,24 @@ console.log('PASS: commander reputation changes actual vehicle damage.');
 
 const AM=E.create([teamWithSupply("ally"),teamWithSupply("enemy")],{balanced:false,ai:false,seed:"ammo"});
 const side=AM.teams[0],foot=side.groups.find(g=>g.kind==="infantry"),truck=side.vehicles.find(v=>v.kind==="logistics");
-assert.equal(foot.ammo,foot.total*100,"100 rounds per squad member");
+assert.equal(foot.ammo,foot.total*200,"200 rounds per squad member");
 foot.x=22;foot.y=55;foot.target=0;truck.x=22;truck.y=55;truck.parked=true;foot.ammo=7;
-E.step(AM);assert.equal(foot.ammo,foot.total*100,"nearby crewed supply replenishes");
+E.step(AM);assert.equal(foot.ammo,foot.total*200,"nearby crewed supply replenishes");
 truck.x=90;truck.y=90;foot.ammo=42;E.step(AM);assert.equal(foot.ammo,42,"ammo does not regenerate when supply is far");
 truck.x=foot.x;truck.y=foot.y;truck.destroyed=true;truck.respawnAt=100;E.step(AM);assert.equal(foot.ammo,42,"destroyed vehicle does not supply");
 assert.equal(E.buildHab,undefined);assert.equal(E.repair,undefined);assert.equal(side.habs,undefined);
 const attack=E.create([team("blue",1),team("red",1)],{balanced:false,ai:false,seed:"simultaneous"});
 for(const t of attack.teams){const g=t.groups[0];g.x=50;g.y=61;g.target=1;g.order="defend";g.suppression=0;g.morale=100}
 E.step(attack);assert.equal(attack.engagements.length,2);assert.ok(attack.engagements.every(e=>e.suppression===0&&e.morale===100),"both infantry attacks use pre-contact suppression and morale");
-assert.ok(attack.teams[0].groups[0].ammo<100 && attack.teams[1].groups[0].ammo<100,"both sides expend rounds");
+assert.ok(attack.teams[0].groups[0].ammo<200 && attack.teams[1].groups[0].ammo<200,"both sides expend rounds");
 for(const t of equalized.teams)for(const v of t.vehicles)assert.equal(v.target,t.groups[v.group].target,"vehicles follow balanced squad target");
 console.log("PASS: nearby logistics supply, ammunition depletion, simultaneous infantry and initial vehicle targets.");
 
 const migrationStart=html.indexOf("function warMigrate(v){"),migrationEnd=html.indexOf("\ntry{const v=JSON.parse(localStorage",migrationStart);
 assert.ok(migrationStart>=0&&migrationEnd>migrationStart);
-const migrate=vm.runInNewContext(html.slice(migrationStart,migrationEnd)+"\nwarMigrate;");
+const migrate=vm.runInNewContext(html.slice(migrationStart,migrationEnd)+"\nwarMigrate;",{BattleEngine:E});
 const old={match:{version:4,turn:5,teams:[{habs:[{id:"H"}],repairs:2,supplied:50,groups:[{ammo:12,total:9}],vehicles:[{repair:{at:6},cargo:120,destination:{type:"hab",id:"H"},destroyed:true,respawnAt:8}]}],log:[{turn:2,events:[{kind:"hab"},{kind:"capture",side:0,point:"A"}]}],orders:[{hab:"H"},{target:1}]}};
-const migrated=migrate(old).match;assert.equal(migrated.version,5);assert.equal(migrated.teams[0].groups[0].ammo,450);assert.equal(migrated.teams[0].habs,undefined);assert.equal(migrated.teams[0].vehicles[0].repair,undefined);assert.equal(migrated.teams[0].vehicles[0].respawnAt,25);assert.equal(migrated.log[0].events.length,1);assert.equal(migrated.orders.length,1);assert.equal(migrated.teams[0].supplied,0);
+const migrated=migrate(old).match;assert.equal(migrated.version,5);assert.equal(migrated.teams[0].groups[0].ammo,900);assert.equal(migrated.teams[0].habs,undefined);assert.equal(migrated.teams[0].vehicles[0].repair,undefined);assert.equal(migrated.teams[0].vehicles[0].respawnAt,25);assert.equal(migrated.log[0].events.length,1);assert.equal(migrated.orders.length,1);assert.equal(migrated.teams[0].supplied,0);
 console.log("PASS: saved-match migration removes old supply objects and preserves ammo proportion.");
 
  
@@ -223,16 +223,16 @@ console.log("PASS: saved-match migration removes old supply objects and preserve
 for(const sideIndex of [0,1]){
  const baseMatch=E.create([team("home",9),team("away",9)],{ai:false,balanced:false}),t=baseMatch.teams[sideIndex],g=t.groups[0];
  g.x=t.base.x;g.y=t.base.y;g.ammo=0;g.order="advance";g.target=1;
- E.step(baseMatch);assert.equal(g.ammo,900,"base refills before outgoing movement");
+ E.step(baseMatch);assert.equal(g.ammo,1800,"base refills before outgoing movement");
  g.x=sideIndex?88:12;g.y=50;g.ammo=0;g.order="defend";
  for(let n=0;n<4;n++)E.step(baseMatch);
- assert.equal(g.ammo,900,"returning squad refills at its own headquarters");
+ assert.equal(g.ammo,1800,"returning squad refills at its own headquarters");
  g.x=50;g.y=95;g.order="defend";g.target=1;g.ammo=123;E.step(baseMatch);
  assert.equal(g.ammo,123,"no remote automatic refill");
 }
 const reinforcement=E.create([team("a",9),team("b",9)],{ai:false,balanced:false});
 const reinf=reinforcement.teams[0].groups[0],returning=reinf.activeIndices.pop();reinf.ready--;reinf.queue=[{at:1,count:1,members:[returning]}];reinf.ammo=0;reinf.x=50;reinf.y=95;reinf.target=1;reinf.order="defend";
-E.step(reinforcement);assert.equal(reinf.ammo,100,"returning soldier brings own basic ammunition");
+E.step(reinforcement);assert.equal(reinf.ammo,200,"returning soldier brings own basic ammunition");
 
 // Worst case: 25 separate two-member crews. Deployment is mirrored, separated, and true.
 function manyCrews(id){return {id,name:id,members:Array.from({length:25},(_,i)=>({id:id+"o"+i,rank:"Лейтенант"})).concat(Array.from({length:25},(_,i)=>({id:id+"v"+i,rank:"Старший прапорщик",role:"Экипаж танка",specialties:["Танк"]})))}}
@@ -388,3 +388,15 @@ console.log("PASS: four orders, legacy normalization, hold positions, two-stage 
  }
  console.log("PASS: commander losses never end matches while tickets and time remain.");
 }
+
+function majorityCapture(blue,red){
+ const m=E.create([team('majority-blue',blue),team('majority-red',red)],{balanced:false,ai:false});
+ m.combatRate=0;
+ for(const t of m.teams)for(const g of t.groups){g.target=1;g.order='defend';Object.assign(g,E.destination(m,g));g.ammo=0;}
+ E.step(m);return m.points[1].progress;
+}
+assert.equal(majorityCapture(8,8),0,'equal infantry blocks capture');
+assert.ok(majorityCapture(9,8)>0,'blue numerical majority captures despite defenders');
+assert.ok(majorityCapture(8,9)<0,'red numerical majority captures despite defenders');
+assert.ok(majorityCapture(12,8)>majorityCapture(9,8),'larger advantage captures faster');
+console.log('PASS: numerical capture majority, equality and proportional speed');
