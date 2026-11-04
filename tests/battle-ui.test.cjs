@@ -49,3 +49,24 @@ win.scrollY=1750;warPaint(box,"normal");assert.equal(win.scrollY,1750,"user scro
 for(const id of ["war-error-slot","war-notice-slot","war-result-slot","war-legacy-slot"])assert.ok(html.includes('id="'+id+'"'),id+" present in renderer");
 assert.ok(html.includes('help.scrollIntoView('),"explicit help navigation remains available");
 console.log("PASS: notices, errors and result preserve map identity, focus, expansion and scroll; user scrolling remains possible.");
+
+{
+ const start=html.indexOf("function warTick(render=true){"),end=html.indexOf("function warExport(",start);
+ assert.ok(start>=0&&end>start,"battle timer functions exist");assert.ok(html.includes("warSpeed=10000"),"default interval is 10 seconds");
+ const fixture=new Function(`
+ let warMatch={status:"running",turn:0,log:[]},warTimer=null,warSpeed=10000,interval=0,pauses=0;
+ const BattleEngine={step(m){m.turn++;m.log.push({events:[{kind:"capture",side:0}]})}};
+ function warCanRun(){return true} function warPersist(){} function battleRender(){} function warArchive(){}
+ function setInterval(fn,ms){interval=ms;return 99} function warPause(){warTimer=null;pauses++}
+ `+html.slice(start,end)+`
+ return {play:warPlay,tick:warTick,state:()=>({interval,warTimer,pauses,turn:warMatch.turn})};
+ `)();
+ fixture.play();assert.equal(fixture.state().interval,10000,"one turn takes 10 seconds");
+ fixture.tick(false);assert.equal(fixture.state().turn,1);
+ assert.equal(fixture.state().warTimer,99,"capture does not pause the timer");
+ assert.equal(fixture.state().pauses,0,"no automatic pause on capture");
+ fixture.play();assert.equal(fixture.state().warTimer,null,"manual pause remains available");
+ for(const removed of ['id="war-speed"','id="war-pause-capture"','data-war-action="step"','data-war-action="finish"','<kbd>N</kbd>'])assert.ok(!html.includes(removed),removed+" removed");
+ assert.ok(html.includes("9 человек — 1800 патронов"));assert.ok(html.includes("9 soldiers means 1800 rounds"));
+ console.log("PASS: fixed 10-second turns, capture keeps running, manual pause, no skip controls, correct ammo examples.");
+}

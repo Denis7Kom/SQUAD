@@ -201,8 +201,8 @@ const side=AM.teams[0],foot=side.groups.find(g=>g.kind==="infantry"),truck=side.
 assert.equal(foot.ammo,foot.total*200,"200 rounds per squad member");
 foot.x=22;foot.y=55;foot.target=0;truck.x=22;truck.y=55;truck.parked=true;foot.ammo=7;
 E.step(AM);assert.equal(foot.ammo,foot.total*200,"nearby crewed supply replenishes");
-truck.x=90;truck.y=90;foot.ammo=42;E.step(AM);assert.equal(foot.ammo,42,"ammo does not regenerate when supply is far");
-truck.x=foot.x;truck.y=foot.y;truck.destroyed=true;truck.respawnAt=100;E.step(AM);assert.equal(foot.ammo,42,"destroyed vehicle does not supply");
+truck.x=90;truck.y=90;foot.ammo=42;E.step(AM);assert.equal(foot.ammo,43,"one round regenerates when supply is far");
+truck.x=foot.x;truck.y=foot.y;truck.destroyed=true;truck.respawnAt=100;E.step(AM);assert.equal(foot.ammo,44,"destroyed vehicle provides only passive regeneration");
 assert.equal(E.buildHab,undefined);assert.equal(E.repair,undefined);assert.equal(side.habs,undefined);
 const attack=E.create([team("blue",1),team("red",1)],{balanced:false,ai:false,seed:"simultaneous"});
 for(const t of attack.teams){const g=t.groups[0];g.x=50;g.y=61;g.target=1;g.order="defend";g.suppression=0;g.morale=100}
@@ -228,11 +228,11 @@ for(const sideIndex of [0,1]){
  for(let n=0;n<4;n++)E.step(baseMatch);
  assert.equal(g.ammo,1800,"returning squad refills at its own headquarters");
  g.x=50;g.y=95;g.order="defend";g.target=1;g.ammo=123;E.step(baseMatch);
- assert.equal(g.ammo,123,"no remote automatic refill");
+ assert.equal(g.ammo,124,"one passive round replenishes remotely");
 }
 const reinforcement=E.create([team("a",9),team("b",9)],{ai:false,balanced:false});
 const reinf=reinforcement.teams[0].groups[0],returning=reinf.activeIndices.pop();reinf.ready--;reinf.queue=[{at:1,count:1,members:[returning]}];reinf.ammo=0;reinf.x=50;reinf.y=95;reinf.target=1;reinf.order="defend";
-E.step(reinforcement);assert.equal(reinf.ammo,200,"returning soldier brings own basic ammunition");
+E.step(reinforcement);assert.equal(reinf.ammo,201,"returning soldier brings ammo plus one passive round");
 
 // Worst case: 25 separate two-member crews. Deployment is mirrored, separated, and true.
 function manyCrews(id){return {id,name:id,members:Array.from({length:25},(_,i)=>({id:id+"o"+i,rank:"Лейтенант"})).concat(Array.from({length:25},(_,i)=>({id:id+"v"+i,rank:"Старший прапорщик",role:"Экипаж танка",specialties:["Танк"]})))}}
@@ -414,4 +414,20 @@ console.log('PASS: numerical capture majority, equality and proportional speed')
   assert.equal(both,height,"parallel sides use their largest list, not the sum");
  }
  console.log("PASS: objective lists grow for one or many squads on each side without clipping.");
+}
+
+{
+ assert.equal(E.PASSIVE_AMMO_PER_TURN,1);
+ const m=E.create([armoredTeam("regen-a"),armoredTeam("regen-b")],{balanced:false,ai:false,seed:"slow-regen"});
+ for(const team of m.teams){
+  for(const g of team.groups){g.target=g.side?2:0;g.order="defend";Object.assign(g,E.destination(m,g));g.ammo=0;}
+  for(const v of team.vehicles){Object.assign(v,{x:team.groups[v.group].x,y:team.groups[v.group].y,parked:true});}
+ }
+ E.step(m);
+ for(const t of m.teams)for(const g of t.groups)assert.equal(g.ammo,1,g.kind+" gains one round per turn");
+ for(let i=0;i<4;i++)E.step(m);
+ for(const t of m.teams)for(const g of t.groups)assert.equal(g.ammo,5,g.kind+" replenishes very slowly");
+ const group=m.teams[0].groups[0];group.ammo=group.total*200-1;E.step(m);
+ assert.equal(group.ammo,group.total*200,"passive replenishment never exceeds capacity");
+ console.log("PASS: slow automatic replenishment applies to every squad once per turn and respects capacity.");
 }
