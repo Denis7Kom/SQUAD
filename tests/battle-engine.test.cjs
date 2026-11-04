@@ -313,7 +313,7 @@ console.log("PASS: four orders, legacy normalization, hold positions, two-stage 
 {
  const nearModel=E.create([team("near",9),team("other",9)],{ai:false,balanced:false});
  const objective=nearModel.points[1],unit=nearModel.teams[0].groups[0];
- for(const [distance,expected] of [[0,true],[5.99,true],[6,false],[12,false],[17.99,false]]){
+ for(const [distance,expected] of [[0,true],[7.99,true],[8,false],[12,false],[17.99,false]]){
   unit.x=objective.x+distance;unit.y=objective.y;
   assert.equal(cluster(nearModel).some(c=>c.groups.some(g=>g.id===unit.id)),expected,"objective-list distance "+distance);
  }
@@ -356,4 +356,21 @@ console.log("PASS: four orders, legacy normalization, hold positions, two-stage 
  assert.ok(result.active.every(m=>m.end>result.today),"demo appointments are current");
  assert.equal(result.realCount,0,"real expired appointment still ends");
  console.log("PASS: demo appointments renew and real appointments still expire.");
+}
+
+{
+ const renderStart=html.indexOf("function warClusterCards(m,clusters){"),renderEnd=html.indexOf("\nfunction warMap(m){",renderStart);
+ const render=new Function("warSelected","wt","esc","warGroupName","warMapGlyph","warInsignia","warText",html.slice(renderStart,renderEnd)+"\nreturn warClusterCards;")([0,0],(ru,en)=>ru,String,()=>"squad",()=>"<svg></svg>",()=>"",String);
+ const model={teams:[{name:"blue",roster:[{name:"blue leader"}]},{name:"red",roster:[{name:"red leader"}]}]};
+ const unit=(side,index)=>({side,index,id:side+"-"+index,commanderIndex:0,ready:2,total:2,kind:"infantry"});
+ const point={id:"A",x:27,y:32};
+ const output=render(model,[{point,groups:[unit(1,0),unit(0,0),unit(0,1)]}]);
+ const blue=output.indexOf("rail-side-blue"),red=output.indexOf("rail-side-red");
+ assert.ok(blue>=0&&red>blue,"blue and red get separate left and right rails");
+ assert.ok(output.slice(blue,red).includes('data-war-unit="0,1"'));
+ assert.ok(!output.slice(blue,red).includes('data-war-unit="1,0"'));
+ assert.ok(output.slice(red).includes('data-war-unit="1,0"'));
+ assert.ok(output.includes("--point-x:27%;--point-y:32%"));
+ assert.ok(!render(model,[{point,groups:[unit(0,0)]}]).includes("rail-side-red"));
+ console.log("PASS: blue and red objective lists stay separated and anchored to the objective.");
 }
