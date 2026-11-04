@@ -648,6 +648,40 @@ for(const t of sampleTeams){const general=t.members.find(m=>m.rank==="Генер
 for(const t of sampleTeams){const assignment={"s7":"d7","s12":"d7","s10":"d6","s11":"d6","s14":"d8","s15":"d8","w8":"w17","w9":"w18","w10":"w11","e4":"e18","e5":"e18","e9":"e17","e10":"e17"};for(const m of t.members)if(assignment[m.id])m.parent=assignment[m.id]}
 /* Бойцы учебных составов распределяются по четырём направлениям. */
 for(const t of sampleTeams){const directionList=["Атака","Оборона","Разведка","Резерв"],leaders=directionList.map(dir=>t.members.filter(m=>m.branch==="officer"&&m.direction===dir&&hasDirection(m.rank)).sort((a,b)=>commandRanks.indexOf(b.rank)-commandRanks.indexOf(a.rank))[0]);if(leaders.every(Boolean)){const fighters=t.members.filter(m=>combatRanks.includes(m.rank));fighters.forEach((m,i)=>{m.parent=leaders[i%leaders.length].id})}}
+/* Дополнительные учебные составы: средняя группа с БТР и малое пехотное отделение. */
+sampleTeams.push(
+ {id:"team-volna",name:"Группа «ВОЛНА»",demo:true,members:[
+  {id:"volna1",name:"Volna_Actual",rank:"Генерал",role:"Командующий",branch:"officer",parent:""},
+  {id:"volna2",name:"Delta_Lead",rank:"Полковник",role:"Командование",branch:"officer",parent:"volna1"},
+  {id:"volna3",name:"Korshun",rank:"Капитан",role:"Сквадлидер",branch:"officer",parent:"volna2",direction:"Атака"},
+  {id:"volna4",name:"Shtil_Lead",rank:"Лейтенант",role:"Сквадлидер",branch:"officer",parent:"volna3",direction:"Атака"},
+  {id:"volna5",name:"River_One",rank:"Младший лейтенант",role:"Сквадлидер",branch:"officer",parent:"volna3",direction:"Атака"},
+  {id:"volna6",name:"Raketa",rank:"Старший прапорщик",role:"Экипаж техники",branch:"soldier",parent:"volna2",specialties:["БТР"]},
+  {id:"volna7",name:"Driver_61",rank:"Прапорщик",role:"Экипаж техники",branch:"soldier",parent:"volna6",specialties:["БТР"]},
+  {id:"volna8",name:"Ladoga",rank:"Старшина",role:"Боец",branch:"soldier",parent:"volna4",specialties:["Стрелок"]},
+  {id:"volna9",name:"Yantar",rank:"Старший сержант",role:"Боец",branch:"soldier",parent:"volna4",specialties:["Медик"]},
+  {id:"volna10",name:"Tikhiy",rank:"Сержант",role:"Боец",branch:"soldier",parent:"volna4",specialties:["Сапёр"]},
+  {id:"volna11",name:"Irbis_22",rank:"Младший сержант",role:"Боец",branch:"soldier",parent:"volna4",specialties:["Лёгкий пулемётчик"]},
+  {id:"volna12",name:"More_07",rank:"Ефрейтор",role:"Боец",branch:"soldier",parent:"volna4",specialties:["Лёгкая труба"]},
+  {id:"volna13",name:"Kaira",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"volna4",specialties:["Стрелок"]},
+  {id:"volna14",name:"Tucha",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"volna5",specialties:["Медик"]},
+  {id:"volna15",name:"Buran_17",rank:"Ефрейтор",role:"Боец",branch:"soldier",parent:"volna5",specialties:["Гренадер"]},
+  {id:"volna16",name:"Osa_13",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"volna5",specialties:["Разведчик"]},
+  {id:"volna17",name:"Karat",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"volna5",specialties:["Стрелок"]},
+  {id:"volna18",name:"Liman",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"volna5",specialties:["Мобильный снайпер"]}
+ ]},
+ {id:"team-fakel",name:"Отряд «ФАКЕЛ»",demo:true,members:[
+  {id:"fakel1",name:"Fakel_Actual",rank:"Генерал",role:"Командующий",branch:"officer",parent:""},
+  {id:"fakel2",name:"Luch_Lead",rank:"Капитан",role:"Сквадлидер",branch:"officer",parent:"fakel1",direction:"Разведка"},
+  {id:"fakel3",name:"Sever_Scout",rank:"Лейтенант",role:"Сквадлидер",branch:"officer",parent:"fakel2",direction:"Разведка"},
+  {id:"fakel4",name:"Tropik",rank:"Сержант",role:"Боец",branch:"soldier",parent:"fakel3",specialties:["Разведчик"]},
+  {id:"fakel5",name:"Lipa",rank:"Ефрейтор",role:"Боец",branch:"soldier",parent:"fakel3",specialties:["Медик"]},
+  {id:"fakel6",name:"Krem",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"fakel3",specialties:["Сапёр"]},
+  {id:"fakel7",name:"Rys_09",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"fakel3",specialties:["Стрелок"]},
+  {id:"fakel8",name:"Kedr_11",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"fakel3",specialties:["Лёгкая труба"]},
+  {id:"fakel9",name:"Volna_23",rank:"Рядовой",role:"Боец",branch:"soldier",parent:"fakel3",specialties:["Лёгкий пулемётчик"]}
+ ]}
+);
 const exampleCandidates=[["VegaActual","Майор","Командирское","Оборона"],["Vityaz_42","Старшина","Солдатское","Автоматчик"],["Rubezh","Лейтенант","Командирское","Резерв"]];
 const exampleReviews=[{name:"FalconActual",team:"Операция «СЕВЕР»",values:[5,5,4,4,5],text:"Чётко распределяет задачи и поддерживает связь с отрядом."},{name:"Sova_31",team:"Группа «БАСТИОН»",kind:"soldier",values:[5,4,4,5,5],text:"Помогает новичкам и вовремя передаёт информацию."},{name:"Nord_93",team:"Отряд «РУБЕЖ»",values:[4,4,5,4,4],text:"Хорошо ориентируется на карте; иногда стоит подробнее объяснять план."}];
 exampleReviews.push({name:"Kremen47",team:"Операция «СЕВЕР»",kind:"technical",values:[5,4,4,5,5],text:"Согласует действия экипажа и осторожно выбирает маршрут."});
@@ -2062,7 +2096,7 @@ function warQuickOrders(m,g){
 
 function warPointClusters(m){
  const view=warSelected[0],groups=m.teams.flatMap(t=>t.groups).filter(g=>g.side===view||BattleEngine.visible(m,view,g));
- return m.points.map(p=>({point:p,groups:groups.filter(g=>{const near=m.points.slice().sort((a,b)=>Math.hypot(g.x-a.x,g.y-a.y)-Math.hypot(g.x-b.x,g.y-b.y))[0];return near.id===p.id&&Math.hypot(g.x-p.x,g.y-p.y)<18})})).filter(c=>c.groups.length);
+ return m.points.map(p=>({point:p,groups:groups.filter(g=>{const near=m.points.slice().sort((a,b)=>Math.hypot(g.x-a.x,g.y-a.y)-Math.hypot(g.x-b.x,g.y-b.y))[0];return near.id===p.id&&Math.hypot(g.x-p.x,g.y-p.y)<6})})).filter(c=>c.groups.length);
 }
 function warClusterCards(m,clusters){
  return clusters.map(c=>'<section class="war-point-rail rail-'+c.point.id+'" aria-label="'+wt("Отряды у точки ","Squads near objective ")+c.point.id+'"><header>'+c.point.id+' · '+c.groups.length+' '+wt("отр.","sq.")+'</header><div class="war-rail-scroll">'+c.groups.map(g=>{
@@ -2127,10 +2161,10 @@ function warSquadMembers(m,g){const t=m.teams[g.side];return Array.isArray(g.mem
 function warGroupName(g){const names={infantry:wt("Пехотный отряд","Infantry squad"),tank:wt("Танковый отряд","Tank squad"),ifv:wt("Отряд БМП","IFV squad"),apc:wt("Отряд БТР","APC squad"),technical:wt("Снабжение и поддержка","Logistics and support"),helicopter:wt("Вертолётный отряд","Helicopter squad")};return (names[g.kind]||wt("Смешанный отряд","Mixed squad"))+" "+(g.ordinal||g.index+1)}
 function warMapGlyph(kind){
  const shapes={
- infantry:'<circle cx="12" cy="5" r="2.5"/><path d="M7 18v-5a5 5 0 0 1 10 0v5M5 20h14"/>',
- tank:'<path d="M3 15h18l-2 4H5zM5 14l2-5h10l2 5M10 9V6h5v3m0-2h7"/><path d="M7 17h.2m3.8 0h.2m3.8 0h.2"/>',
- ifv:'<path d="M3 15h18l-2 4H5zM5 14l2-5h9l3 5M10 9V6h4v3m0-2h5"/><path d="M7 17h.2m3.8 0h.2m3.8 0h.2"/>',
- apc:'<path d="M3 14l3-5h11l4 5v2H3zM9 9V7h4v2"/><circle cx="7" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>',
+ infantry:'<path d="M4 14v-2a8 8 0 0 1 16 0v2l1 1v2H3v-2zM7 17v2h10v-2"/>',
+ tank:'<path d="M3 11v8h18v-8zM5 10l2-3h10l2 3M9 7V5h6v2m0-1h7M6 19l1 2h10l1-2"/><path d="M7 15h10"/>',
+ ifv:'<path d="M3 12v7h18v-7zM5 11l2-3h9l3 3M10 8V6h4v2m0-1h6M6 19l1 2h10l1-2"/><path d="M7 15h10"/>',
+ apc:'<path d="M3 13l3-4h11l4 4v3H3zM10 9V7h4v2m0-1h4"/><circle cx="6" cy="18" r="1.3"/><circle cx="10" cy="18" r="1.3"/><circle cx="14" cy="18" r="1.3"/><circle cx="18" cy="18" r="1.3"/>',
  helicopter:'<path d="M3 6h18M12 6v3M7 12h9l4 3-1 3H8l-3-3zM7 14H3l-1-3m6 9h10m-8-2v2m6-2v2"/>',
  technical:'<path d="M3 9h11v7H3zM14 11h4l3 3v2h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/><path d="M7 12h4m-2-2v4"/>',
  logistics:'<path d="M3 9h11v7H3zM14 11h4l3 3v2h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/><path d="M7 12h4m-2-2v4"/>',
@@ -2141,7 +2175,7 @@ function warMapGlyph(kind){
 function warRankShort(rank){const ru={"Генерал":"ГЕН","Полковник":"ПОЛК","Подполковник":"П/П","Майор":"МАЙ","Капитан":"КАП","Старший лейтенант":"СТ.Л","Лейтенант":"Л-Т","Младший лейтенант":"МЛ.Л"},en={"Генерал":"GEN","Полковник":"COL","Подполковник":"LTC","Майор":"MAJ","Капитан":"CPT","Старший лейтенант":"1LT","Лейтенант":"LT","Младший лейтенант":"2LT"};return (uiLanguage==="en"?en:ru)[rank]||"SL"}
 function warText(v){return uiLanguage==="en"?uiTranslate(String(v||"")):String(v||"")}
 function warInsignia(rank){return insignia(rank).replace(/aria-label="([^"]*)"/g,(_,label)=>'aria-label="'+esc(uiLanguage==="en"?label.startsWith("Условное изображение погона: ")?"Illustrative rank insignia: "+warText(rank):label==="Советник"?"Advisor":label==="Знак должности: координатор техники"?"Position insignia: equipment coordinator":warText(label):label)+'"')}
-function warGroupSymbol(g){return g.kind==="infantry"?"♟":g.kind==="tank"?"◆":g.kind==="ifv"?"▰":g.kind==="apc"?"▱":g.kind==="technical"?"▣":g.kind==="helicopter"?"✈":"◇"}
+function warGroupSymbol(g){return warMapGlyph(g.kind)}
  
 function warVehicleName(v){return ({tank:wt("Танк","Tank"),ifv:wt("БМП","IFV"),apc:wt("БТР","APC"),helicopter:wt("Вертолёт","Helicopter"),logistics:wt("Транспорт снабжения","Logistics vehicle"),support:wt("Техническая группа","Support crew")})[v.kind]||v.kind}
 function warVehiclePanel(m,g){
