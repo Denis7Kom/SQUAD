@@ -260,21 +260,21 @@ function shockMatch(rank="Генерал"){
  for(const t of m.teams)for(const v of t.vehicles){v.x=45+v.side*10;v.y=50;v.parked=true}
  m.teams[0].vehicles[0].hp=1;return m;
 }
-for(const rank of ["Генерал","Полковник"]){
+for(const rank of Object.keys(E.COMMAND_PENALTIES)){
  const m=shockMatch(rank);E.step(m);
  assert.equal(m.commandAlerts.length,1);assert.equal(m.commandAlerts[0].side,0);assert.equal(m.commandAlerts[0].rank,rank);
  assert.equal(m.log.at(-1).events.filter(e=>e.kind==="command").length,1);
  assert.equal(E.commandFactor(m,0),1,"new penalty starts next turn");
  assert.equal(E.commandFactor(m,1),1,"opposing team is unaffected");
- assert.equal(m.teams[0].commandShock.startsAt,2);assert.equal(m.teams[0].commandShock.untilTurn,4);
+ assert.equal(m.teams[0].commandShocks[0].startsAt,2);assert.equal(m.teams[0].commandShocks[0].untilTurn,4);
  const restored=JSON.parse(JSON.stringify(m));
- for(let turn=2;turn<=5;turn++){E.step(m);E.step(restored);assert.equal(E.commandFactor(m,0),turn<=4?.9:1);assert.equal(JSON.stringify(restored),JSON.stringify(m),"penalty survives save/reload");}
+ for(let turn=2;turn<=5;turn++){E.step(m);E.step(restored);assert.equal(E.commandFactor(m,0),turn<=4?1-E.COMMAND_PENALTIES[rank]/100:1);assert.equal(JSON.stringify(restored),JSON.stringify(m),"penalty survives save/reload");}
  assert.equal(m.commandAlerts.length,1,"dead officer does not trigger repeated alerts");
 }
-const junior=shockMatch("Подполковник");E.step(junior);assert.equal((junior.commandAlerts||[]).length,0,"lower ranks do not trigger army penalty");
+const junior=shockMatch("Подполковник");E.step(junior);assert.equal(junior.commandAlerts[0].penalty,10,"lieutenant colonel penalty");
 const repeatShock=shockMatch();repeatShock.teams[0].commandShock={startsAt:0,untilTurn:1};E.step(repeatShock);
 assert.equal(E.commandFactor(repeatShock,0),.9,"a fresh loss does not cancel last active penalty turn");
-assert.equal(repeatShock.teams[0].commandShock.untilTurn,4,"repeat loss extends time");
+assert.equal(repeatShock.teams[0].commandShocks[0].untilTurn,4,"repeat loss extends time");
 function infantryExpected(shocked){
  const m=E.create([team("a",9),team("b",9)],{ai:false,balanced:false,seed:"shock-fire"});m.combatRate=.4;
  for(const t of m.teams){const g=t.groups[0];g.x=50;g.y=61;g.target=1;g.order="defend"}
@@ -292,7 +292,7 @@ assert.ok(Math.abs(captureProgress(true)-captureProgress(false)*.9)<1e-9,"captur
 const noticeStart=html.indexOf("function warCommandNotice(m){"),noticeEnd=html.indexOf("const warNames=",noticeStart);
 const notice=new Function("BattleEngine","wt","esc",html.slice(noticeStart,noticeEnd)+"return warCommandNotice;")(E,(ru,en)=>ru,s=>String(s).replaceAll("<","&lt;"));
 const uiShock=shockMatch();uiShock.teams[0].roster[0].name="<bad>";E.step(uiShock);
-assert.ok(notice(uiShock).includes("ГЕНЕРАЛ ПОГИБ"));assert.ok(notice(uiShock).includes("&lt;bad>"));assert.ok(!notice(uiShock).includes("<bad>"));
+assert.ok(notice(uiShock).includes("Генерал &lt;bad> убит!"));assert.ok(notice(uiShock).includes("&lt;bad>"));assert.ok(!notice(uiShock).includes("<bad>"));
 for(let n=0;n<4;n++)E.step(uiShock);assert.equal(notice(uiShock),"","warning and status disappear after expiry");
 console.log("PASS: base and reinforcement ammo, separated mirrored deployment, senior officer alerts, exact shock duration, non-stacking, real fire/capture penalty and safe warning rendering.");
 
@@ -409,7 +409,7 @@ console.log('PASS: numerical capture majority, equality and proportional speed')
  for(const y of [32,61])for(const count of [1,2,6,15,25]){
   const group=Array.from({length:count},()=>({side:0}));
   const height=minHeight([{point:{x:50,y},groups:group}]);
-  assert.ok(height*(1-y/100)+22+1e-6>=count*43+12,"all "+count+" rows fit at "+y+"%");
+  assert.ok(height*(1-y/100)+27+1e-6>=count*53+12,"all "+count+" rows fit at "+y+"%");
   const both=minHeight([{point:{x:50,y},groups:group.concat(group.map(()=>({side:1})))}]);
   assert.equal(both,height,"parallel sides use their largest list, not the sum");
  }
@@ -460,4 +460,23 @@ console.log('PASS: numerical capture majority, equality and proportional speed')
  n.teams[0].tickets=0;n.teams[0].casualtyTickets=250;E.step(n);
  assert.equal(n.reason,"tickets");assert.equal(n.winner,1,"depletion before time determines winner");
  console.log("PASS: 120-turn timeout is a draw; early ticket depletion decides victory.");
+}
+
+{
+ const m=E.create([team("overlap-a",9),team("overlap-b",9)],{ai:false,balanced:false});
+ m.teams[0].commandShocks=[{startsAt:1,untilTurn:3,penalty:20},{startsAt:2,untilTurn:5,penalty:3}];
+ m.turn=2;assert.equal(E.commandFactor(m,0),.8,"strongest penalty, no addition");
+ m.turn=4;assert.equal(E.commandFactor(m,0),.97,"weaker later loss does not extend stronger penalty");
+ m.turn=6;assert.equal(E.commandFactor(m,0),1,"independent expiration");
+ const make=()=>E.create([team("ai-a",9),team("ai-b",9)],{ai:true,balanced:false});
+ const ai=make();ai.points.forEach(p=>p.owner=1);Object.assign(ai.teams[1].groups[0],{x:50,y:61,target:0});Object.assign(ai.teams[0].groups[0],{x:50,y:61});E.planAI(ai);
+ assert.equal(ai.teams[1].groups[0].target,1,"defend detected threat");
+ const a=make(),b=JSON.parse(JSON.stringify(a));
+ for(const m of [a,b])Object.assign(m.teams[1].groups[0],{x:50,y:61,target:1});
+ Object.assign(a.teams[0].groups[0],{x:5,y:5});Object.assign(b.teams[0].groups[0],{x:95,y:5});
+ assert.equal(E.visible(a,1,a.teams[0].groups[0]),false);assert.equal(E.visible(b,1,b.teams[0].groups[0]),false);
+ E.planAI(a);E.planAI(b);assert.equal(a.teams[1].groups[0].target,b.teams[1].groups[0].target,"no hidden enemy knowledge");
+ const spread=E.create([team("spread-a",45),team("spread-b",45)],{ai:true,balanced:false});E.planAI(spread);
+ assert.ok(new Set(spread.teams[1].groups.map(g=>g.target)).size>1,"distribute squads");
+ console.log("PASS: rank penalties, independent expiry, visible AI threats and force distribution.");
 }
