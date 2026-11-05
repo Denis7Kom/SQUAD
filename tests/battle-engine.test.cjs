@@ -402,18 +402,11 @@ assert.ok(majorityCapture(12,8)>majorityCapture(9,8),'larger advantage captures 
 console.log('PASS: numerical capture majority, equality and proportional speed');
 
 {
- const start=html.indexOf("function warClusterMapMinHeight(clusters){"),end=html.indexOf("function warMap(m){",start);
- assert.ok(start>=0&&end>start,"list sizing helper exists");
- const minHeight=new Function(html.slice(start,end)+"\nreturn warClusterMapMinHeight;")();
- assert.equal(minHeight([]),0);
- for(const y of [32,61])for(const count of [1,2,6,15,25]){
-  const group=Array.from({length:count},()=>({side:0}));
-  const height=minHeight([{point:{x:50,y},groups:group}]);
-  assert.ok(height*(1-y/100)+27+1e-6>=count*53+12,"all "+count+" rows fit at "+y+"%");
-  const both=minHeight([{point:{x:50,y},groups:group.concat(group.map(()=>({side:1})))}]);
-  assert.equal(both,height,"parallel sides use their largest list, not the sum");
- }
- console.log("PASS: objective lists grow for one or many squads on each side without clipping.");
+ const map=html.slice(html.indexOf("function warMap(m){"),html.indexOf("function warRules(){"));
+ assert.ok(!map.includes("war-list-min-height"));
+ assert.ok(!map.includes("war-map-height"));
+ assert.ok(html.includes("overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin"));
+ console.log("PASS: map dimensions are independent of squad count; objective lists scroll.");
 }
 
 {
