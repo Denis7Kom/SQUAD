@@ -156,7 +156,7 @@ body.map-is-expanded{overflow:hidden}body.map-is-expanded #view-structure{animat
 .org-card::before{display:none}
 
 /* Increase the displayed version once per project update: 1.0.9 → 1.1.0. */
-.footer{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 24px;flex-wrap:wrap}.project-version{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));z-index:10;padding:4px 9px;border:1px solid #495344;border-radius:999px;background:#141812;color:#c2ccbe;white-space:nowrap;font-size:11px;font-variant-numeric:tabular-nums;pointer-events:none}
+.footer{display:flex;justify-content:space-between;align-items:flex-end;gap:12px 24px;flex-wrap:wrap}.project-version{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:10;padding:4px 9px;border:1px solid var(--line);border-left:2px solid var(--accent);border-radius:4px;background:var(--panel);color:var(--ink);white-space:nowrap;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;pointer-events:none}
 
 /* Separate identity from reputation while retaining the original card appearance. */
 .org-info strong{font-size:15px;line-height:1.25}
