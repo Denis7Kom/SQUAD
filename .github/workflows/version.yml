@@ -35,3 +35,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         if: steps.version.outputs.released == 'true' || github.event_name == 'workflow_dispatch'
         run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
+      - name: Verify release commit
+        if: steps.version.outputs.released == 'true'
+        run: node --test tests/*.test.cjs
+      - name: Publish GitHub prerelease
+        if: steps.version.outputs.released == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASED: ${{ steps.version.outputs.released }}
+        run: |
+          version=$(tr -d '\\r\\n' < VERSION)
+          tag="v$version"
+          if [ "$RELEASED" != true ] && [ "$(git log -1 --format=%s)" != "chore(release): $version" ]; then exit 0; fi
+          test "$(git rev-parse "$tag^{commit}")" = "$(git rev-parse HEAD)"
+          node --test tests/*.test.cjs
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --verify-tag --prerelease --generate-notes --title "$tag"
+          fi
