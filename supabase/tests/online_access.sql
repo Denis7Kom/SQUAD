@@ -59,10 +59,10 @@ do $$ declare r jsonb; begin
 end $$;
 select public.save_member_review(current_setting('squad.test.team')::uuid,'00000000-0000-4000-8000-000000000001','soldier',array[2,4,1,3,0]::smallint[]);
 select public.save_member_review(current_setting('squad.test.team')::uuid,'00000000-0000-4000-8000-000000000001','technical',array[2,4,1,3,0]::smallint[]);
-do $ declare r jsonb; begin
+do $$ declare r jsonb; begin
  select ratings into r from public.team_roster(current_setting('squad.test.team')::uuid) where user_id='00000000-0000-4000-8000-000000000001';
  if (r->'soldier'->>'score')::numeric <> 11 or (r->'technical'->>'score')::numeric <> 11.5 then raise exception 'Asymmetric weights mismatch'; end if;
-end $;
+end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
 insert into public.profiles(id,callsign) values(auth.uid(),'Outsider');
 do $$ begin
@@ -72,13 +72,13 @@ do $$ begin
 end $$;
 select public.join_team(current_setting('squad.test.invite')::uuid);
 select public.save_member_review(current_setting('squad.test.team')::uuid,'00000000-0000-4000-8000-000000000001','commander',array[1,1,1,1,1]::smallint[]);
-do $ declare r jsonb; begin
+do $$ declare r jsonb; begin
  select ratings into r from public.team_roster(current_setting('squad.test.team')::uuid) where user_id='00000000-0000-4000-8000-000000000001';
  if (r->'commander'->>'score')::numeric <> 2.5 or (r->'commander'->>'count')::int <> 2 then raise exception 'Multiple-author average mismatch'; end if;
  if exists(select 1 from public.member_reviews where author_id <> auth.uid()) then raise exception 'Other author raw reviews exposed'; end if;
-end $;
+end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
-do $ begin
+do $$ begin
  begin perform public.remove_team_member(current_setting('squad.test.team')::uuid,auth.uid());
  raise exception 'Owner removed'; exception when invalid_parameter_value then null; end;
 end $$;
@@ -105,12 +105,12 @@ insert into public.team_members(team_id,user_id) select current_setting('squad.t
 select set_config('squad.test.current_invite',(select code::text from public.team_invites where team_id=current_setting('squad.test.team')::uuid),true);
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000002',true);
-do $ begin
+do $$ begin
  begin perform public.join_team(current_setting('squad.test.current_invite')::uuid);
  raise exception 'Team capacity exceeded'; exception when invalid_parameter_value then null; end;
-end $;
+end $$;
 reset role;
-do $ begin
+do $$ begin
  if exists(select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
  where n.nspname='public' and c.relkind='r' and not c.relrowsecurity) then raise exception 'Table without RLS'; end if;
 end $$;
