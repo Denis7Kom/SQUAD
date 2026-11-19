@@ -13,3 +13,7 @@ The initial migration creates profiles, teams and team membership. Users may man
 5. Set up encrypted, access-controlled database backups and test restoration. Never store database dumps in a public repository.
 
 Only the project URL and publishable key are appropriate for a browser integration. Secret/service-role keys and database passwords must not be shared in chat, placed in the website, or committed.
+
+## Online pilot extension
+
+The second migration adds private invitations, member operations and weighted reviews with server-enforced limits. See [deployment and access checks](../docs/12-online-launch.md). It is not deployed by adding files to this directory. CI uses a disposable PostgreSQL auth fixture; never apply the files in tests/ to a hosted Supabase project.
