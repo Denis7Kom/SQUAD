@@ -25,10 +25,10 @@ function message(text,error=false){
 }
 async function run(task){
  if(busy)return;
- busy=true;host.setAttribute('aria-busy','true');host.querySelectorAll('button').forEach(b=>b.disabled=true);
+ busy=true;host.setAttribute('aria-busy','true');host.querySelectorAll('button,input,select').forEach(b=>b.disabled=true);
  try{message(t('Подождите…','Please wait…'));await task()}
  catch(error){if(user&&!api.hasSession()){user=null;teams=[];roster=[];selected='';renderLogin()}message(error.message||t('Запрос не выполнен','Request failed'),true)}
- finally{busy=false;host.removeAttribute('aria-busy');host.querySelectorAll('button').forEach(b=>b.disabled=false)}
+ finally{busy=false;host.removeAttribute('aria-busy');host.querySelectorAll('button,input,select').forEach(b=>b.disabled=false)}
 }
 function form(parent,submit){
  const f=el('form',undefined,{class:'online-form'});parent.append(f);
@@ -44,6 +44,7 @@ function header(){
 function renderLogin(){
  header();
  const p=panel(t('Вход в аккаунт','Sign in'));
+ if(window.SQUAD_CONFIG.emailLogin){
  const f=form(p,async()=>{
    await api.signIn(email.value,password.value);password.value='';await loadAccount();
  });
@@ -57,6 +58,7 @@ function renderLogin(){
    const signedIn=await api.signUp(email.value,password.value);password.value='';
    if(signedIn)await loadAccount();else message(t('Подтвердите адрес по письму, затем войдите.','Confirm the email, then sign in.'));
   });
+ }
  }
  for(const provider of window.SQUAD_CONFIG.oauthProviders||[]){
   if(['github','discord'].includes(provider))button(p,t('Войти через ','Continue with ')+provider,async()=>{
@@ -75,6 +77,8 @@ async function loadAccount(){
  if(!teams.some(x=>x.id===selected))selected=teams[0]?.id||'';
  roster=selected?await api.roster(selected):[];
  const profile=await api.profile(user.id);
+ const initialSubject=roster.find(member=>member.user_id!==user.id);
+ own=initialSubject?await api.ownReviews(selected,initialSubject.user_id):[];
  renderAccount(profile[0]?.callsign||'');
 }
 function renderAccount(callsign){
@@ -162,19 +166,19 @@ function renderReview(){
  async function existing(){own=await api.ownReviews(selected,subject.value);draw();message('')}
  subject.addEventListener('change',()=>run(existing));
  kind.addEventListener('change',draw);
- own=[];draw();
+ draw();
  button(f,t('Сохранить оценку','Save review'),null,'submit');
  p.append(el('p',t('Один отзыв каждого типа от автора на игрока в команде. Самооценка запрещена. Среднее и число отзывов вычисляет сервер.',
   'One review per author, player, team and type. No self reviews. The server calculates averages and counts.')));
- // Fetch lazily on explicit request to keep account rendering deterministic.
+ // Allow an explicit reload after changes made in another session.
  button(p,t('Загрузить мою сохранённую оценку','Load my saved review'),existing);
 }
 async function boot(){
  header();
  const config=window.SQUAD_CONFIG||{};
- if(!config.url||!config.publishableKey){
-  panel(t('Подключение готовится','Connection pending')).append(el('p',t('Общий сервер ещё не настроен. Здесь нельзя зарегистрироваться или отправить данные. Локальные разделы доступны.',
-   'The shared server is not configured yet. Signup and data submission are unavailable here. Local sections remain available.')));
+ if(config.enabled!==true||!config.url||!config.publishableKey){
+  panel(t('Подключение готовится','Connection pending')).append(el('p',t('Общий режим пока выключен: настройка входа ещё не завершена. Локальные разделы доступны.',
+   'Shared mode is not enabled yet: sign-in setup is pending. Local sections remain available.')));
   return;
  }
  try{

@@ -1,9 +1,9 @@
 # Supabase foundation — SQUAD COMMAND
 
-This is a preliminary, unconnected foundation, not a production release. The public site remains in local prototype mode.
+The foundation and online-team migrations were applied to the dedicated SQUAD Free project with explicit owner approval on 2026-11-19. Discord setup is deferred; the public site and online workspace remain in local/disabled mode. This is not a verified production release.
 
 ## Current scope
-The initial migration creates profiles, teams and team membership. Users may manage their own profile and create a team through a transaction; team ownership is derived from auth.uid(). Direct team and membership writes are denied. Team and membership reads are intentionally restricted. No sharing, reviews, elections, expiry, transfers, reserve ranks, certificates, moderation, imports or public profiles are implemented.
+The two migrations create profiles, teams, membership, private invitation codes and member reviews. Team operations derive the caller from auth.uid(), check membership/ownership and enforce limits in transactions. Direct team, membership and review writes are denied. RLS and roster RPCs restrict visibility. Elections, expiry, ownership transfers, reserve ranks, certificates, moderation and local-data imports are not implemented.
 
 ## Setup and verification
 1. Create a separate Supabase Free project, or select the project explicitly intended for SQUAD COMMAND. Do not use a service role or database password in frontend code.

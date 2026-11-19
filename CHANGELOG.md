@@ -4,7 +4,8 @@
 
 - Add an opt-in online team workspace with tab-scoped authentication, profiles, private invitations and shared ratings.
 - Add a transactional Supabase migration with RLS, account/team limits, membership controls and server-calculated rating averages.
-- Keep online features disabled until a dedicated project and sign-in provider pass deployment checks.
+- Keep online features explicitly disabled while Discord setup and hosted sign-in checks are pending.
+- Preserve online navigation and load existing review values before editing.
 - Cache the online interface shell without caching authentication or database requests.
 
 ## 2.0.3-alpha — 2026-11-14

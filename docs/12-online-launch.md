@@ -1,6 +1,6 @@
 # Online pilot deployment — 2.1.0-alpha
 
-Status: implementation prepared, not a verified production release. The existing public site remains a local prototype until the migration, provider configuration and two-account acceptance checks pass.
+Status: database migrations applied with explicit owner approval on 2026-11-19; Discord setup deferred at the owner's request. The existing public site remains a local prototype. The online workspace is disabled until provider configuration and two-account acceptance checks pass.
 
 ## Free infrastructure
 - Keep the public frontend at https://denis7kom.github.io/SQUAD/ on GitHub Pages.
@@ -28,12 +28,12 @@ All public tables explicitly enable RLS. Anonymous access and direct team/member
 ## Migration and verification order
 1. Run the PR's Online database checks and SQUAD tests workflows. The SQL job uses a disposable PostgreSQL database and a minimal auth.uid/auth.users fixture. It exercises real PostgreSQL privileges, constraints and RLS, but does not replace hosted Supabase Auth tests.
 2. Review both tracked SQL migrations in order. Do not paste ad-hoc schema edits into the dashboard. Apply migrations using the Supabase CLI's migration workflow or an explicitly approved repository integration.
-3. Applying migrations or policies to the intended production project requires the owner's explicit confirmation. No migration has been applied by preparing these files.
+3. Applying migrations or policies to the intended production project requires the owner's explicit confirmation. Both reviewed migrations were applied with explicit owner approval on 2026-11-19 using the connected Supabase migration tool.
 4. Use the access tests in supabase/tests/online_access.sql only against the disposable CI database created with supabase/tests/bootstrap.sql. The bootstrap mocks auth and must NEVER be run on Supabase.
 5. On an isolated hosted test environment, verify real sign-in with two independent browsers/accounts and the checks below. Do not open public registration before these pass.
 6. Configure an enabled OAuth provider (GitHub or Discord) in the provider's console and Supabase, or configure suitable custom SMTP for verified email signup. Provider secrets belong only in platform settings. Do not disable email confirmation to bypass delivery restrictions. Supabase's built-in mail only sends to organisation-member addresses and is unsuitable for general signup.
 7. Set Auth Site URL to https://denis7kom.github.io/SQUAD/ and allow that exact callback URL. Keep redirect allowlists narrow.
-8. Fill online-config.js with only the public project URL and publishable/anon key. Add only configured provider names to oauthProviders. Set emailSignup=true only after mail delivery and confirmation/recovery have been tested. Session and PKCE data stay in sessionStorage for this tab. OAuth uses PKCE.
+8. The public project URL and publishable key are configured in online-config.js; enabled=false keeps the feature disabled. Set enabled=true only after sign-in setup is ready. Add only configured provider names to oauthProviders. Email/password login is hidden by emailLogin=false. Set emailSignup=true only after mail delivery and confirmation/recovery have been tested. Session and PKCE data stay in sessionStorage for this tab. OAuth uses PKCE.
 9. Review the PR and explicitly authorise any merge/release. Verify the Pages deployment's commit and test its public URL. Updating a branch alone is not deployment verification.
 
 ## Hosted acceptance checklist (not yet executed)
@@ -53,4 +53,12 @@ All public tables explicitly enable RLS. Anonymous access and direct team/member
 ## Validation recorded in this work
 - Existing battle engine and battle UI tests passed before changes, including 900 simulated matches.
 - Nine online client tests passed locally with mocked HTTP, including PKCE, session refresh, redacted errors, author identity and logout after network failure.
-- Full project tests and PostgreSQL CI results must be recorded in the PR; do not infer SQL success from client mocks.
+- All three GitHub Actions workflows passed for commit 0dd1c074071fe5e3c7e5adb095eca08c6e2976c8: SQUAD tests (including Linux release idempotency), Online database checks, and Release smoke test. Later changes are checked again in the PR.
+- Hosted read-only inspection confirmed RLS enabled on all five public tables and zero profiles after migration.
+- Supabase security advisor reports seven intentionally authenticated SECURITY DEFINER functions. Each uses an empty search_path and derives access from auth.uid(); the PostgreSQL access tests exercise their checks. This warning must not be described as zero advisories. See https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable.
+- Discord is selected; its provider settings currently report disabled. The owner deferred configuration. No hosted authentication or two-account acceptance flow has passed yet.
+
+## Applied migration history
+The connected migration service assigns deployment timestamps. File names are aligned with its ledger, preserving the SQL content that was tested and applied:
+- 20261119121439_initial_foundation.sql (original source name: 202610290001_initial_foundation.sql).
+- 20261119121455_online_teams.sql (original source name: 202611190001_online_teams.sql).
