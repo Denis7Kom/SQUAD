@@ -23,7 +23,9 @@ major, minor, patch, stage = re.fullmatch(
 ).groups()
 tag = f"v{current}"
 if not git("tag", "--list", tag):
-    baseline = git("log", "--first-parent", "--diff-filter=A", "-1", "--format=%H", "--", "VERSION")
+    # A reviewed PR may prepare VERSION and CHANGELOG before the release workflow.
+    # Anchor an untagged version to its latest VERSION commit, not its original addition.
+    baseline = git("log", "--first-parent", "-1", "--format=%H", "--", "VERSION")
     if not baseline or git("show", f"{baseline}:VERSION") != current:
         raise ValueError(f"Cannot identify baseline for {tag}")
     git("tag", tag, baseline)

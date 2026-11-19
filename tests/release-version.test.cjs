@@ -1,0 +1,34 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {execFileSync}=require('node:child_process');
+test('release handles a prepared version and stays idempotent',{skip:process.platform==='win32'?'Local Git transport needs MSYS permissions; exercised on Linux CI':false},()=>{
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'squad-release-'));
+ const remote=path.join(dir,'remote.git'),repo=path.join(dir,'repo');
+ fs.mkdirSync(repo);
+ const git=(...args)=>execFileSync('git',args,{cwd:repo,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+ const write=(p,c)=>fs.writeFileSync(path.join(repo,p),c);
+ execFileSync('git',['init','--bare',remote],{stdio:'pipe'});
+ git('init','-b','main');git('config','user.name','Release Test');git('config','user.email','release-test@example.invalid');
+ git('remote','add','origin',remote);
+ write('VERSION','2.0.3-alpha\n');write('CHANGELOG.md','# Changelog\n\n## 2.0.3-alpha\n\n- Baseline\n');
+ write('index.html','<div aria-label="Версия проекта">ver. 2.0.3-alpha</div>');
+ write('sw.js','const CACHE="squad-shell-2.0.3-alpha";');
+ git('add','.');git('commit','-m','baseline');git('tag','v2.0.3-alpha');
+ write('VERSION','2.1.0-alpha\n');write('CHANGELOG.md','# Changelog\n\n## 2.1.0-alpha\n\n- Online teams\n');
+ write('index.html','<div aria-label="Версия проекта">ver. 2.1.0-alpha</div>');
+ write('sw.js','const CACHE="squad-shell-2.1.0-alpha";');
+ git('add','.');git('commit','-m','feat: online teams');
+ const prepared=git('rev-parse','HEAD');
+ const script=path.resolve(__dirname,'../scripts/release.py');
+ const python=process.env.PYTHON||(process.platform==='win32'?'python':'python3');
+ const run=()=>execFileSync(python,[script],{cwd:repo,stdio:['ignore','pipe','pipe']});
+ run();assert.equal(git('rev-parse','v2.1.0-alpha'),prepared);
+ run();assert.equal(git('rev-parse','HEAD'),prepared);
+ git('commit','--allow-empty','-m','fix: online correction');run();
+ assert.equal(fs.readFileSync(path.join(repo,'VERSION'),'utf8').trim(),'2.1.1-alpha');
+ const released=git('rev-parse','HEAD');
+ assert.equal(git('rev-parse','v2.1.1-alpha'),released);
+ run();assert.equal(git('rev-parse','HEAD'),released);
+ // Keep fixtures in the temporary directory; no workspace files or refs are deleted.
+});
