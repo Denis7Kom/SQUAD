@@ -18,8 +18,8 @@ jobs:
         run: |
           sudo systemctl start postgresql.service
           sudo -u postgres createdb squad_online_test
-          sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d squad_online_test -f "$GITHUB_WORKSPACE/supabase/tests/bootstrap.sql"
+          sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d squad_online_test -f - < "$GITHUB_WORKSPACE/supabase/tests/bootstrap.sql"
           for migration in supabase/migrations/*.sql; do
-            sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d squad_online_test -f "$GITHUB_WORKSPACE/$migration"
+            sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d squad_online_test -f - < "$GITHUB_WORKSPACE/$migration"
           done
-          sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d squad_online_test -f "$GITHUB_WORKSPACE/supabase/tests/online_access.sql"
+          sudo -u postgres psql -X -v ON_ERROR_STOP=1 -d squad_online_test -f - < "$GITHUB_WORKSPACE/supabase/tests/online_access.sql"
