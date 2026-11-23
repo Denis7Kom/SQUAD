@@ -1,6 +1,6 @@
 # Online pilot deployment — 2.1.0-alpha
 
-Status: database migrations applied with explicit owner approval on 2026-11-19; Discord setup deferred at the owner's request. The existing public site remains a local prototype. The online workspace is disabled until provider configuration and two-account acceptance checks pass.
+Status: database migrations applied with explicit owner approval on 2026-11-19; Discord provider and production redirect URL configured on 2026-11-23. The existing public site remains a local prototype. The branch enables the online workspace for acceptance testing; the public site remains unchanged until deployment.
 
 ## Free infrastructure
 - Keep the public frontend at https://denis7kom.github.io/SQUAD/ on GitHub Pages.
@@ -33,7 +33,7 @@ All public tables explicitly enable RLS. Anonymous access and direct team/member
 5. On an isolated hosted test environment, verify real sign-in with two independent browsers/accounts and the checks below. Do not open public registration before these pass.
 6. Configure an enabled OAuth provider (GitHub or Discord) in the provider's console and Supabase, or configure suitable custom SMTP for verified email signup. Provider secrets belong only in platform settings. Do not disable email confirmation to bypass delivery restrictions. Supabase's built-in mail only sends to organisation-member addresses and is unsuitable for general signup.
 7. Set Auth Site URL to https://denis7kom.github.io/SQUAD/ and allow that exact callback URL. Keep redirect allowlists narrow.
-8. The public project URL and publishable key are configured in online-config.js; enabled=false keeps the feature disabled. Set enabled=true only after sign-in setup is ready. Add only configured provider names to oauthProviders. Email/password login is hidden by emailLogin=false. Set emailSignup=true only after mail delivery and confirmation/recovery have been tested. Session and PKCE data stay in sessionStorage for this tab. OAuth uses PKCE.
+8. The public project URL and publishable key are configured in online-config.js; enabled=true and oauthProviders includes discord on this draft branch. Validate the real sign-in flow before deployment. Add only configured provider names to oauthProviders. Email/password login is hidden by emailLogin=false. Set emailSignup=true only after mail delivery and confirmation/recovery have been tested. Session and PKCE data stay in sessionStorage for this tab. OAuth uses PKCE.
 9. Review the PR and explicitly authorise any merge/release. Verify the Pages deployment's commit and test its public URL. Updating a branch alone is not deployment verification.
 
 ## Hosted acceptance checklist (not yet executed)
@@ -56,7 +56,7 @@ All public tables explicitly enable RLS. Anonymous access and direct team/member
 - All three GitHub Actions workflows passed for commit 0dd1c074071fe5e3c7e5adb095eca08c6e2976c8: SQUAD tests (including Linux release idempotency), Online database checks, and Release smoke test. Later changes are checked again in the PR.
 - Hosted read-only inspection confirmed RLS enabled on all five public tables and zero profiles after migration.
 - Supabase security advisor reports seven intentionally authenticated SECURITY DEFINER functions. Each uses an empty search_path and derives access from auth.uid(); the PostgreSQL access tests exercise their checks. This warning must not be described as zero advisories. See https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable.
-- Discord is selected; its provider settings currently report disabled. The owner deferred configuration. No hosted authentication or two-account acceptance flow has passed yet.
+- Discord provider is enabled and the exact production site URL is configured. The complete OAuth flow and two-account tests remain pending. No hosted authentication or two-account acceptance flow has passed yet.
 
 ## Applied migration history
 The connected migration service assigns deployment timestamps. File names are aligned with its ledger, preserving the SQL content that was tested and applied:
