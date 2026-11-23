@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1-alpha — 2026-11-23
+
+- Keep the online session after temporary network or server failures while refreshing authentication.
+- Require the selected player’s reviews to load before saving, preventing a failed request from carrying over another player’s values.
+- Clarify that a timed-out write may have succeeded and should be checked after refreshing.
+
 ## 2.1.0-alpha — 2026-11-19
 
 - Add an opt-in online team workspace with tab-scoped authentication, profiles, private invitations and shared ratings.

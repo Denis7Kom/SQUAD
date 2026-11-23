@@ -91,3 +91,20 @@ test('online UI never interpolates server content into HTML',()=>{
  const source=fs.readFileSync(require('node:path').join(__dirname,'../online.js'),'utf8');
  assert.doesNotMatch(source,/innerHTML|outerHTML|insertAdjacentHTML|eval\(/);
 });
+
+test('transient refresh failures preserve session for a later retry',async()=>{
+ let mode='offline';
+ const initial={...session,expires_at:1};
+ const f=fixture(url=>{if(url.includes('refresh_token')){if(mode==='offline')throw new Error('offline');if(mode==='server')return {status:503,body:{}};return {body:session}} return {body:[]}});
+ f.storage.setItem('squad-online-session-v1',JSON.stringify(initial));
+ const api=createClient(config,{storage:f.storage,fetch:async(url,options)=>{const result=await (async()=>{if(url.includes('refresh_token')){if(mode==='offline')throw new Error('offline');if(mode==='server')return {status:503,body:{}};return {body:session}}return {body:[]}})();return new Response(JSON.stringify(result.body),{status:result.status||200})}});
+ await assert.rejects(api.teams(),/Network/);assert.equal(api.hasSession(),true);
+ mode='server';await assert.rejects(api.teams());assert.equal(api.hasSession(),true);
+ mode='ok';assert.deepEqual(await api.teams(),[]);
+});
+test('rejected refresh credentials clear the local session',async()=>{
+ const f=fixture(()=>({status:400,body:{error_code:'refresh_token_not_found'}}));
+ f.storage.setItem('squad-online-session-v1',JSON.stringify({...session,expires_at:1}));
+ const api=createClient(config,{storage:f.storage,fetch:async()=>new Response(JSON.stringify({error_code:'refresh_token_not_found'}),{status:400})});
+ await assert.rejects(api.teams());assert.equal(api.hasSession(),false);
+});

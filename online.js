@@ -143,7 +143,9 @@ function renderAccount(callsign){
 }
 function renderReview(){
  const p=panel(t('Оценить участника','Review a teammate'));
+ let loadedSubject=roster.find(member=>member.user_id!==user.id)?.user_id||'';
  const f=form(p,async()=>{
+  if(loadedSubject!==subject.value)throw new Error(t('Сначала загрузите оценки выбранного участника.','Load this member’s reviews before saving.'));
   await api.saveReview(selected,subject.value,kind.value,Array.from(criteria.querySelectorAll('select'),x=>Number(x.value)));
   await loadAccount();message(t('Оценка сохранена. Повторная отправка заменяет вашу оценку этого типа.','Review saved. Submitting again replaces your review of this type.'));
  });
@@ -163,7 +165,13 @@ function renderReview(){
    select.value=String(previous?.scores[i]??3);label.append(select);criteria.append(label);
   });
  }
- async function existing(){own=await api.ownReviews(selected,subject.value);draw();message('')}
+ async function existing(){
+  loadedSubject='';own=[];draw();
+  const target=subject.value;
+  const reviews=await api.ownReviews(selected,target);
+  if(target!==subject.value)return;
+  own=reviews;loadedSubject=target;draw();message('')
+ }
  subject.addEventListener('change',()=>run(existing));
  kind.addEventListener('change',draw);
  draw();

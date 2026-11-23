@@ -39,7 +39,7 @@
           headers:{apikey:key,...(body!==undefined?{'Content-Type':'application/json'}:{}),
             ...(auth?{Authorization:'Bearer '+session.access_token}:{}),...headers},
           ...(body!==undefined?{body:JSON.stringify(body)}:{})});
-      }catch(_){throw new Error('Network unavailable or request timed out. No offline writes are queued.')}
+      }catch(_){throw new Error('Network unavailable or request timed out. No offline writes are queued; if you sent a change, refresh to check whether it was saved.')}
       const data=response.status===204?null:await response.json().catch(()=>null);
       if(!response.ok){
         if(auth&&response.status===401)clear();
@@ -51,7 +51,7 @@
           signup_disabled:'Signup is disabled for this pilot.'};
         const message=codes[data?.error_code||data?.code]||
           (path.startsWith('/rest/')&&['Authentication required','Save your profile first','Team name must be 2 to 80 characters','Maximum five teams per account','Invitation is invalid','Team is full (50 members)','Owner access required','Access denied','The owner cannot leave the team','Team access required','Self reviews are not allowed','Player is not in this team'].includes(data?.message)?data.message:null)||'Request failed. Check your login and project configuration.';
-        throw new Error(String(message).slice(0,220));
+        const error=new Error(String(message).slice(0,220));error.status=response.status;throw error;
       }
       return data;
     }
@@ -61,7 +61,7 @@
       if(!refreshing)refreshing=(async()=>{
         try{setSession(await request('/auth/v1/token?grant_type=refresh_token',
           {method:'POST',body:{refresh_token:session.refresh_token}}))}
-        catch(error){clear();throw error}finally{refreshing=null}
+        catch(error){if(error.status===400||error.status===401)clear();throw error}finally{refreshing=null}
       })();
       await refreshing;
     }
